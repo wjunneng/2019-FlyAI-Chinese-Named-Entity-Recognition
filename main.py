@@ -56,6 +56,7 @@ best_score = 0
 for step in range(dataset.get_step()):
     x_train, y_train = dataset.next_train_batch()
     x_val, y_val = dataset.next_validation_batch()
+    print(x_train)
     '''
     实现自己的模型保存逻辑
     '''

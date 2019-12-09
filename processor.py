@@ -4,17 +4,18 @@ import os
 from flyai.processor.base import Base
 from path import DATA_PATH
 import json
-import config
+from config.args import WORDS_FILE
 import numpy as np
 import chardet
 
 
 class Processor(Base):
     def __init__(self):
-        self.token = None
-        self.label_dic = config.label_dic
-        with open(config.src_vocab_file, 'r') as fw:
+        # self.token = None
+        # self.label_dic = config.label_dic
+        with open(WORDS_FILE, 'r') as fw:
             self.words_dic = json.load(fw)
+        pass
 
     def input_x(self, source):
         """
@@ -33,20 +34,22 @@ class Processor(Base):
         """
         参数为csv中作为输入y的一条数据，该方法会被Dataset多次调用
         """
-        label2id = []
-        target = target.split()
-        for t in target:
-            label2id.append(self.label_dic.index(t))
-        return label2id
+        # label2id = []
+        # target = target.split()
+        # for t in target:
+        #     label2id.append(self.label_dic.index(t))
+        # return label2id
+        return None
 
     def output_y(self, index):
         """
         验证时使用，把模型输出的y转为对应的结果
         """
-        label = []
-        for i in index:
-            if i != config.label_len - 1:
-                label.append(config.label_dic[i])
-            else:
-                break
-        return label
+        # label = []
+        # for i in index:
+        #     if i != config.label_len - 1:
+        #         label.append(config.label_dic[i])
+        #     else:
+        #         break
+        # return label
+        return None
