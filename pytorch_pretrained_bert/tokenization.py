@@ -272,9 +272,10 @@ class BasicTokenizer(object):
         for char in text:
             cp = ord(char)
             if self._is_chinese_char(cp):
-                output.append(" ")
+                # 注意单字符则添加，否则去除
+                # output.append(" ")
                 output.append(char)
-                output.append(" ")
+                # output.append(" ")
             else:
                 output.append(char)
         return "".join(output)

@@ -24,6 +24,8 @@ def init_params():
 def create_batch_iter(mode):
     """构造迭代器"""
     with open(args.VOCAB_FILE, 'w') as file1, open(args.WORDS_FILE, 'r') as file2:
+        for token in args.token_words:
+            file1.write(token + '\n')
         vocab = json.load(file2).keys()
         for word in vocab:
             file1.write(word + '\n')

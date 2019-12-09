@@ -17,7 +17,7 @@ output_dir = os.path.join(ROOT_DIR, "output/checkpoint")  # checkpoint和预测�
 
 bert_model = os.path.join(ROOT_DIR, "model/pytorch_pretrained_model")  # BERT 预训练模型种类 bert-base-chinese
 task_name = "bert_ner"  # 训练任务名称
-
+token_words = ["[UNK]", "[SEP]", "[PAD]", "[CLS]", "[MASK]"]
 flag_words = ["[PAD]", "[CLP]", "[SEP]", "[UNK]"]
 max_seq_length = 200
 do_lower_case = True
