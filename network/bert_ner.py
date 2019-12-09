@@ -1,5 +1,5 @@
 import torch.nn as nn
-from net.crf import CRF
+from network.crf import CRF
 import numpy as np
 from sklearn.metrics import f1_score, classification_report
 import config.args as args

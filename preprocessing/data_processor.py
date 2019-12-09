@@ -250,7 +250,7 @@ def convert_examples_to_features(examples, label_list, max_seq_length, tokenizer
 
         ## output_mask用来过滤bert输出中sub_word的输出,只保留单词的第一个输出(As recommended by jocob in his paper)
         ## 此外，也是为了适应crf
-        output_mask = [0 if sub_vocab.get(t) is not None else 1 for t in tokens_a]
+        output_mask = [0 if sub_vocab.get(t) is None else 1 for t in tokens_a]
         output_mask = [0] + output_mask + [0]
         output_mask += padding
 

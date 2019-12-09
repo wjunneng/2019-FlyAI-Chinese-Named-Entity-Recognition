@@ -1,6 +1,6 @@
 import os
 import torch
-from net.bert_ner import Bert_CRF
+from network.bert_ner import Bert_CRF
 import config.args as args
 
 
