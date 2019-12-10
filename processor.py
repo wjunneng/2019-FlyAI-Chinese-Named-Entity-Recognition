@@ -1,14 +1,15 @@
 # -*- coding: utf-8 -*
+import json
 from flyai.processor.base import Base
 
-from config.args import VOCAB_FILE
+from config.args import VOCAB_FILE, WORDS_FILE, token_words
 
 
 class Processor(Base):
     def __init__(self):
         vocab_dict = {}
-        with open(args.VOCAB_FILE, 'w') as file1, open(args.WORDS_FILE, 'r') as file2:
-            for token in args.token_words:
+        with open(VOCAB_FILE, 'w') as file1, open(WORDS_FILE, 'r') as file2:
+            for token in token_words:
                 file1.write(token + '\n')
             vocab = json.load(file2).keys()
             for word in vocab:
