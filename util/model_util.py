@@ -1,6 +1,6 @@
 import os
 import torch
-from network.bert_ner import Bert_CRF
+from net import Net
 import config.args as args
 
 
@@ -14,5 +14,5 @@ def load_model(output_dir):
     # Load a trained model that you have fine-tuned
     output_model_file = os.path.join(output_dir, "pytorch_model.bin")
     model_state_dict = torch.load(output_model_file)
-    model = Bert_CRF.from_pretrained(args.bert_model, state_dict=model_state_dict)
+    model = Net.from_pretrained(args.bert_model, state_dict=model_state_dict)
     return model

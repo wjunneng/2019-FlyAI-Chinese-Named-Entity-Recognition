@@ -1,6 +1,6 @@
-from network.bert_ner import Bert_CRF
+from net import Net
 from preprocessing.data_loader import create_batch_iter
-from network.train import fit
+from train import fit
 import config.args as args
 from util.porgress_util import ProgressBar
 from preprocessing.data_processor import produce_data
@@ -12,7 +12,7 @@ def start():
     eval_iter = create_batch_iter("dev")
     epoch_size = num_train_steps * args.train_batch_size * args.gradient_accumulation_steps / args.num_train_epochs
     pbar = ProgressBar(epoch_size=epoch_size, batch_size=args.train_batch_size)
-    model = Bert_CRF.from_pretrained(args.bert_model, num_tag=len(args.labels))
+    model = Net.from_pretrained(args.bert_model, num_tag=len(args.labels))
     for name, param in model.named_parameters():
         if param.requires_grad:
             print(name)

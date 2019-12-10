@@ -8,7 +8,7 @@ import config.args as args
 import operator
 import pandas as pd
 
-logger = init_logger("bert_ner", logging_path=os.path.join(args.ROOT_DIR, args.log_path))
+logger = init_logger("bert_ner", logging_path=args.log_path)
 
 
 def train_val_split(X, y, valid_size=0.2, random_state=2018, shuffle=True):

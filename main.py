@@ -37,16 +37,31 @@ flyai库中的提供的数据处理方法
 dataset = Dataset(epochs=args.EPOCHS, batch=args.BATCH)
 model = Model(dataset)
 
-'''
-实现自己的网络机构
-'''
 # 判断gpu是否可用
 if torch.cuda.is_available():
     device = 'cuda'
 else:
     device = 'cpu'
 device = torch.device(device)
-net = Net().to(device)
+
+
+produce_data()
+train_iter, num_train_steps = create_batch_iter("train")
+eval_iter = create_batch_iter("dev")
+epoch_size = num_train_steps * args.train_batch_size * args.gradient_accumulation_steps / args.num_train_epochs
+pbar = ProgressBar(epoch_size=epoch_size, batch_size=args.train_batch_size)
+model = Net.from_pretrained(args.bert_model, num_tag=len(args.labels)).to(device)
+for name, param in model.named_parameters():
+    if param.requires_grad:
+        print(name)
+
+fit(model=model,
+    training_iter=train_iter,
+    eval_iter=eval_iter,
+    num_epoch=args.num_train_epochs,
+    pbar=pbar,
+    num_train_steps=num_train_steps,
+    verbose=1)
 
 '''
 dataset.get_step() 获取数据的总迭代次数
