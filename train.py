@@ -1,3 +1,4 @@
+import warnings
 import time
 import torch
 from pytorch_pretrained_bert.optimization import BertAdam
@@ -6,20 +7,19 @@ import config.args as args
 from util.plot_util import loss_acc_plot
 from util.Logginger import init_logger
 
-from util.model_util import save_model, load_model
+from util.model_util import save_model
 
 logger = init_logger("torch", logging_path=args.log_path)
 
 torch.manual_seed(args.seed)
 torch.cuda.manual_seed(args.seed)
 torch.cuda.manual_seed_all(args.seed)
-import warnings
 warnings.filterwarnings('ignore')
 
 
 def warmup_linear(x, warmup=0.002):
     if x < warmup:
-        return x/warmup
+        return x / warmup
     return 1.0 - x
 
 
@@ -37,7 +37,7 @@ def fit(model, training_iter, eval_iter, num_epoch, pbar, num_train_steps, verbo
 
     t_total = num_train_steps
 
-    ## ---------------------GPU半精度fp16-----------------------------
+    # ---------------------GPU半精度fp16-----------------------------
     if args.fp16:
         try:
             from apex.optimizers import FP16_Optimizer
@@ -54,12 +54,14 @@ def fit(model, training_iter, eval_iter, num_epoch, pbar, num_train_steps, verbo
             optimizer = FP16_Optimizer(optimizer, dynamic_loss_scale=True)
         else:
             optimizer = FP16_Optimizer(optimizer, static_loss_scale=args.loss_scale)
-    ## ------------------------GPU单精度fp32---------------------------
+
+    # ------------------------GPU单精度fp32---------------------------
     else:
         optimizer = BertAdam(optimizer_grouped_parameters,
                              lr=args.learning_rate,
                              warmup=args.warmup_proportion,
                              t_total=t_total)
+
     # ---------------------模型初始化----------------------
     if args.fp16:
         model.half()
@@ -78,10 +80,12 @@ def fit(model, training_iter, eval_iter, num_epoch, pbar, num_train_steps, verbo
         "eval_acc": eval_accuracy
     }
 
-# ------------------------训练------------------------------
+    # ------------------------训练------------------------------
     best_f1 = 0
     start = time.time()
     global_step = 0
+    train_loss = None
+    train_acc = None
     for e in range(num_epoch):
         model.train()
         for step, batch in enumerate(training_iter):
@@ -118,7 +122,7 @@ def fit(model, training_iter, eval_iter, num_epoch, pbar, num_train_steps, verbo
             train_acc, f1 = model.acc_f1(predicts, label_ids)
             pbar.show_process(train_acc, train_loss.item(), f1, time.time() - start, step)
 
-# -----------------------验证----------------------------
+        # -----------------------验证----------------------------
         model.eval()
         count = 0
         y_predicts, y_labels = [], []
@@ -131,13 +135,12 @@ def fit(model, training_iter, eval_iter, num_epoch, pbar, num_train_steps, verbo
                 eval_los = model.loss_fn(bert_encode=bert_encode, tags=label_ids, output_mask=output_mask)
                 eval_loss = eval_los + eval_loss
                 count += 1
-                predicts =  model.predict(bert_encode, output_mask)
+                predicts = model.predict(bert_encode, output_mask)
                 y_predicts.append(predicts)
 
                 label_ids = label_ids.view(1, -1)
                 label_ids = label_ids[label_ids != -1]
                 y_labels.append(label_ids)
-
 
             eval_predicted = torch.cat(y_predicts, dim=0).cpu()
             eval_labeled = torch.cat(y_labels, dim=0).cpu()
@@ -149,7 +152,7 @@ def fit(model, training_iter, eval_iter, num_epoch, pbar, num_train_steps, verbo
                 '\n\nEpoch %d - train_loss: %4f - eval_loss: %4f - train_acc:%4f - eval_acc:%4f - eval_f1:%4f\n'
                 % (e + 1,
                    train_loss.item(),
-                   eval_loss.item()/count,
+                   eval_loss.item() / count,
                    train_acc,
                    eval_acc,
                    eval_f1))
@@ -162,7 +165,7 @@ def fit(model, training_iter, eval_iter, num_epoch, pbar, num_train_steps, verbo
             if e % verbose == 0:
                 train_losses.append(train_loss.item())
                 train_accuracy.append(train_acc)
-                eval_losses.append(eval_loss.item()/count)
+                eval_losses.append(eval_loss.item() / count)
                 eval_accuracy.append(eval_acc)
 
     loss_acc_plot(history)

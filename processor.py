@@ -1,55 +1,47 @@
 # -*- coding: utf-8 -*
-import os
-
 from flyai.processor.base import Base
-from path import DATA_PATH
-import json
-from config.args import WORDS_FILE
-import numpy as np
-import chardet
+
+from config.args import VOCAB_FILE
 
 
 class Processor(Base):
     def __init__(self):
-        # self.token = None
-        # self.label_dic = config.label_dic
-        with open(WORDS_FILE, 'r') as fw:
-            self.words_dic = json.load(fw)
-        pass
+        vocab_dict = {}
+        with open(args.VOCAB_FILE, 'w') as file1, open(args.WORDS_FILE, 'r') as file2:
+            for token in args.token_words:
+                file1.write(token + '\n')
+            vocab = json.load(file2).keys()
+            for word in vocab:
+                file1.write(word + '\n')
+        with open(VOCAB_FILE, 'r') as file:
+            for word in dict.fromkeys(file.readlines(), True):
+                vocab_dict[word] = len(vocab_dict)
+        self.vocab_dict = dict(zip(vocab_dict.values(), vocab_dict.keys()))
 
     def input_x(self, source):
         """
         参数为csv中作为输入x的一条数据，该方法会被Dataset多次调用
         """
-        sen2id = []
         source = source.split()
-        for s in source:
-            if s in self.words_dic:
-                sen2id.append(self.words_dic[s])
-            else:
-                sen2id.append(config.src_unknown_id)
-        return sen2id
+
+        return source
 
     def input_y(self, target):
         """
         参数为csv中作为输入y的一条数据，该方法会被Dataset多次调用
         """
-        # label2id = []
-        # target = target.split()
-        # for t in target:
-        #     label2id.append(self.label_dic.index(t))
-        # return label2id
-        return None
+        target = target.split()
+
+        return target
 
     def output_y(self, index):
         """
         验证时使用，把模型输出的y转为对应的结果
         """
-        # label = []
-        # for i in index:
-        #     if i != config.label_len - 1:
-        #         label.append(config.label_dic[i])
-        #     else:
-        #         break
-        # return label
-        return None
+        label = []
+        for i in index:
+            if i != 0:
+                label.append(self.vocab_dict[i])
+            else:
+                break
+        return label
