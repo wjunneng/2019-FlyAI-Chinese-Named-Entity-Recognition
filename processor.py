@@ -1,23 +1,13 @@
 # -*- coding: utf-8 -*
-import json
 from flyai.processor.base import Base
 
-from config.args import VOCAB_FILE, WORDS_FILE, token_words
+from config import args
+from pytorch_pretrained_bert.tokenization import BertTokenizer
 
 
 class Processor(Base):
     def __init__(self):
-        vocab_dict = {}
-        with open(VOCAB_FILE, 'w') as file1, open(WORDS_FILE, 'r') as file2:
-            for token in token_words:
-                file1.write(token + '\n')
-            vocab = json.load(file2).keys()
-            for word in vocab:
-                file1.write(word + '\n')
-        with open(VOCAB_FILE, 'r') as file:
-            for word in dict.fromkeys(file.readlines(), True):
-                vocab_dict[word] = len(vocab_dict)
-        self.vocab_dict = dict(zip(vocab_dict.values(), vocab_dict.keys()))
+        self.label_map = {i: label for i, label in enumerate(args.labels)}
 
     def input_x(self, source):
         """
@@ -42,7 +32,7 @@ class Processor(Base):
         label = []
         for i in index:
             if i != 0:
-                label.append(self.vocab_dict[i])
+                label.append(self.label_map[i])
             else:
                 break
         return label

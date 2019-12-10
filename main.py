@@ -7,6 +7,7 @@ Created on Mon Oct 30 19:44:02 2017
 import argparse
 from flyai.dataset import Dataset
 from preprocessing.data_loader import create_batch_iter
+from config.args import VOCAB_FILE, WORDS_FILE, token_words
 import warnings
 import time
 import torch
@@ -44,6 +45,12 @@ def main():
     device = torch.device(device)
 
     # ------------------预处理数据----------------------
+    with open(VOCAB_FILE, 'w') as file1, open(WORDS_FILE, 'r') as file2:
+        for token in token_words:
+            file1.write(token + '\n')
+        vocab = json.load(file2).keys()
+        for word in vocab:
+            file1.write(word + '\n')
     dataset = Dataset(epochs=arguments.EPOCHS, batch=arguments.BATCH)
 
     network = Net.from_pretrained(args.bert_model, num_tag=len(args.labels)).to(device)

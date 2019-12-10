@@ -20,7 +20,7 @@ class Model(Base):
         self.device = torch.device(device)
         self.data = data
         self.bert_model = args.output_dir
-        self.net = load_model(self.bert_model)
+        self.net = load_model(self.bert_model).to(self.device)
         self.processor = Processor()
 
     def predict(self, **data):
@@ -31,7 +31,7 @@ class Model(Base):
         batch = tuple(t.to(self.device) for t in batch)
         input_ids, input_mask, segment_ids, label_ids, output_mask = batch
         bert_encode = self.net(input_ids, segment_ids, input_mask).cpu()
-        predicts = self.net.predict(bert_encode, output_mask)
+        predicts = self.net.predict(bert_encode, output_mask).numpy()
 
         return self.processor.output_y(predicts)
 
@@ -41,11 +41,13 @@ class Model(Base):
         labels = []
         for data in datas:
             x_data = self.data.predict_data(**data)
-            x_data = torch.from_numpy(x_data)
-            outputs = self.net(x_data)
-            prediction = outputs.data.numpy()
-            prediction = self.data.to_categorys(prediction)
-            labels.append(prediction)
+            batch = create_batch_iter(mode='predict', X=x_data, y=None).dataset.tensors
+            batch = tuple(t.to(self.device) for t in batch)
+            input_ids, input_mask, segment_ids, label_ids, output_mask = batch
+            bert_encode = self.net(input_ids, segment_ids, input_mask).cpu()
+            predicts = self.net.predict(bert_encode, output_mask).numpy()
+            labels.append(self.processor.output_y(predicts))
+
         return labels
 
     def save_model(self, network, path, name=None, overwrite=False):
