@@ -11,21 +11,24 @@ from config.args import VOCAB_FILE, WORDS_FILE, token_words
 import warnings
 import time
 import torch
-
+import json
 from pytorch_pretrained_bert.optimization import BertAdam
-import config.args as args
+import config.args as arguments
 from model import Model
 from net import Net
 from util.plot_util import loss_acc_plot
 from util.Logginger import init_logger
 from util.model_util import save_model
+from flyai.utils import remote_helper
 
-logger = init_logger("torch", logging_path=args.log_path)
+logger = init_logger("torch", logging_path=arguments.log_path)
 
-torch.manual_seed(args.seed)
-torch.cuda.manual_seed(args.seed)
-torch.cuda.manual_seed_all(args.seed)
+torch.manual_seed(arguments.seed)
+torch.cuda.manual_seed(arguments.seed)
+torch.cuda.manual_seed_all(arguments.seed)
 warnings.filterwarnings('ignore')
+
+remote_helper.get_remote_date("https://www.flyai.com/m/chinese_base.zip")
 
 
 def main():
@@ -35,7 +38,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("-e", "--EPOCHS", default=10, type=int, help="train epochs")
     parser.add_argument("-b", "--BATCH", default=8, type=int, help="batch size")
-    arguments = parser.parse_args()
+    args = parser.parse_args()
 
     # ------------------判断CUDA模式----------------------
     if torch.cuda.is_available():
@@ -51,9 +54,9 @@ def main():
         vocab = json.load(file2).keys()
         for word in vocab:
             file1.write(word + '\n')
-    dataset = Dataset(epochs=arguments.EPOCHS, batch=arguments.BATCH)
+    dataset = Dataset(epochs=args.EPOCHS, batch=args.BATCH)
 
-    network = Net.from_pretrained(args.bert_model, num_tag=len(args.labels)).to(device)
+    network = Net.from_pretrained(arguments.bert_model, num_tag=len(arguments.labels)).to(device)
     # model = Model(dataset)
     # ---------------------优化器-------------------------
     param_optimizer = list(network.named_parameters())
@@ -63,10 +66,10 @@ def main():
         {'params': [p for n, p in param_optimizer if not any(nd in n for nd in no_decay)], 'weight_decay': 0.01},
         {'params': [p for n, p in param_optimizer if any(nd in n for nd in no_decay)], 'weight_decay': 0.0}]
 
-    t_total = int(len(dataset.get_all_data()) / arguments.BATCH * arguments.EPOCHS)
+    t_total = int(len(dataset.get_all_data()) / args.BATCH * args.EPOCHS)
 
     # ---------------------GPU半精度fp16-----------------------------
-    if args.fp16:
+    if arguments.fp16:
         try:
             from apex.optimizers import FP16_Optimizer
             from apex.optimizers import FusedAdam
@@ -75,24 +78,24 @@ def main():
                 "Please install apex from https://www.github.com/nvidia/apex to use distributed and fp16 training.")
 
         optimizer = FusedAdam(optimizer_grouped_parameters,
-                              lr=args.learning_rate,
+                              lr=arguments.learning_rate,
                               bias_correction=False,
                               max_grad_norm=1.0)
-        if args.loss_scale == 0:
+        if arguments.loss_scale == 0:
             optimizer = FP16_Optimizer(optimizer, dynamic_loss_scale=True)
         else:
-            optimizer = FP16_Optimizer(optimizer, static_loss_scale=args.loss_scale)
+            optimizer = FP16_Optimizer(optimizer, static_loss_scale=arguments.loss_scale)
 
     # ------------------------GPU单精度fp32---------------------------
     else:
         optimizer = BertAdam(optimizer_grouped_parameters,
-                             lr=args.learning_rate,
-                             warmup=args.warmup_proportion
+                             lr=arguments.learning_rate,
+                             warmup=arguments.warmup_proportion
                              , t_total=t_total
                              )
 
     # ---------------------模型初始化----------------------
-    if args.fp16:
+    if arguments.fp16:
         network.half()
 
     network.to(device)
@@ -117,17 +120,17 @@ def main():
         bert_encode = network(input_ids, segment_ids, input_mask).cpu()
         train_loss = network.loss_fn(bert_encode=bert_encode, tags=label_ids, output_mask=output_mask)
 
-        if args.gradient_accumulation_steps > 1:
-            train_loss = train_loss / args.gradient_accumulation_steps
+        if arguments.gradient_accumulation_steps > 1:
+            train_loss = train_loss / arguments.gradient_accumulation_steps
 
-        if args.fp16:
+        if arguments.fp16:
             optimizer.backward(train_loss)
         else:
             train_loss.backward()
 
-        if (step + 1) % args.gradient_accumulation_steps == 0:
+        if (step + 1) % arguments.gradient_accumulation_steps == 0:
             # modify learning rate with special warm up BERT uses
-            lr_this_step = args.learning_rate * warmup_linear(global_step / t_total, args.warmup_proportion)
+            lr_this_step = arguments.learning_rate * warmup_linear(global_step / t_total, arguments.warmup_proportion)
             for param_group in optimizer.param_groups:
                 param_group['lr'] = lr_this_step
             optimizer.step()
@@ -181,7 +184,7 @@ def main():
         # 保存最好的模型
         if eval_f1 > best_f1:
             best_f1 = eval_f1
-            save_model(network, args.output_dir)
+            save_model(network, arguments.output_dir)
 
         train_losses.append(train_loss.item())
         train_accuracy.append(train_acc)
