@@ -32,11 +32,11 @@ class InputFeature(object):
 class DataProcessor(object):
     """数据预处理的基类，自定义的MyPro继承该类"""
 
-    def get_train_examples(self, data_dir):
+    def get_train_examples(self, X, y):
         """读取训练集 Gets a collection of `InputExample`s for the train set."""
         raise NotImplementedError()
 
-    def get_dev_examples(self, data_dir):
+    def get_dev_examples(self, X, y):
         """读取验证集 Gets a collection of `InputExample`s for the dev set."""
         raise NotImplementedError()
 
@@ -45,13 +45,12 @@ class DataProcessor(object):
         raise NotImplementedError()
 
     @classmethod
-    def _read_json(cls, input_file):
-        with open(input_file, "r", encoding='utf-8') as fr:
-            lines = []
-            for line in fr:
-                _line = line.strip('\n')
-                lines.append(_line)
-            return lines
+    def _read_data(cls, X, y):
+        lines = []
+        for source, target in zip(X, y):
+            lines.append({"source": source, "target": target})
+
+        return lines
 
 
 class MyPro(DataProcessor):
@@ -61,21 +60,19 @@ class MyPro(DataProcessor):
         examples = []
         for i, line in enumerate(lines):
             guid = "%s-%d" % (set_type, i)
-            line = json.loads(line)
-            text_a = line["source"]
-            label = line["target"]
-            assert len(label.split()) == len(text_a.split())
+            text_a = ' '.join(line["source"].tolist())
+            label = ' '.join(line["target"].tolist())
             example = InputExample(guid=guid, text_a=text_a, label=label)
             examples.append(example)
         return examples
 
-    def get_train_examples(self, data_dir):
-        lines = self._read_json(args.TRAIN)
+    def get_train_examples(self, X, y):
+        lines = self._read_data(X=X, y=y)
         examples = self._create_example(lines, "train")
         return examples
 
-    def get_dev_examples(self, data_dir):
-        lines = self._read_json(args.VALID)
+    def get_dev_examples(self, X, y):
+        lines = self._read_data(X=X, y=y)
         examples = self._create_example(lines, "dev")
         return examples
 
@@ -112,9 +109,7 @@ def convert_examples_to_features(examples, label_list, max_seq_length, tokenizer
         segment_ids = [0] * len(tokens)
         # 词转换成数字
         input_ids = tokenizer.convert_tokens_to_ids(tokens)
-
         input_mask = [1] * len(input_ids)
-
         padding = [0] * (max_seq_length - len(input_ids))
 
         input_ids += padding

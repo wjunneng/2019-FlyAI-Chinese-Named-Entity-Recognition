@@ -1,5 +1,4 @@
 import torch
-import json
 from torch.utils.data import TensorDataset, DataLoader, RandomSampler, SequentialSampler
 
 from pytorch_pretrained_bert.tokenization import BertTokenizer
@@ -24,7 +23,12 @@ def init_params():
 def create_batch_iter(mode, X, y):
     """构造迭代器"""
     processor, tokenizer = init_params()
-    examples = processor.get_dev_examples(args.data_dir)
+    if mode == 'train':
+        examples = processor.get_train_examples(X=X, y=y)
+    elif mode == 'dev':
+        examples = processor.get_dev_examples(X=X, y=y)
+    else:
+        raise ValueError("Invalid mode %s" % mode)
     batch_size = len(X)
 
     label_list = processor.get_labels()

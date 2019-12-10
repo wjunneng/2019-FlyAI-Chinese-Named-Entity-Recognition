@@ -33,7 +33,7 @@ def main():
     """
     parser = argparse.ArgumentParser()
     parser.add_argument("-e", "--EPOCHS", default=10, type=int, help="train epochs")
-    parser.add_argument("-b", "--BATCH", default=32, type=int, help="batch size")
+    parser.add_argument("-b", "--BATCH", default=4, type=int, help="batch size")
     arguments = parser.parse_args()
 
     # ------------------判断CUDA模式----------------------
@@ -112,10 +112,18 @@ def main():
     network.train()
     for step in range(dataset.get_step()):
         x_train, y_train = dataset.next_train_batch()
+        batch = create_batch_iter(mode='train', X=x_train, y=y_train).dataset.tensors
         batch = tuple(t.to(device) for t in batch)
         input_ids, input_mask, segment_ids, label_ids, output_mask = batch
         bert_encode = network(input_ids, segment_ids, input_mask).cpu()
+
+        if step == 45:
+            print(1)
         train_loss = network.loss_fn(bert_encode=bert_encode, tags=label_ids, output_mask=output_mask)
+        # try:
+        #     train_loss = network.loss_fn(bert_encode=bert_encode, tags=label_ids, output_mask=output_mask)
+        # except:
+        #     continue
 
         if args.gradient_accumulation_steps > 1:
             train_loss = train_loss / args.gradient_accumulation_steps
@@ -140,7 +148,8 @@ def main():
         label_ids = label_ids.cpu()
 
         train_acc, f1 = network.acc_f1(predicts, label_ids)
-        print(train_acc, train_loss.item(), f1, time.time() - start, step)
+        print("train_acc: %f" % train_acc, "train_loss: %f" % train_loss.item(), "f1: %f" % f1,
+              "using time: %f" % (time.time() - start), "step: %d" % step)
 
         # x_val, y_val = dataset.next_validation_batch()
 
