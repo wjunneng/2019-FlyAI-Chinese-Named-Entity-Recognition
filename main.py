@@ -33,7 +33,7 @@ def main():
     """
     parser = argparse.ArgumentParser()
     parser.add_argument("-e", "--EPOCHS", default=10, type=int, help="train epochs")
-    parser.add_argument("-b", "--BATCH", default=4, type=int, help="batch size")
+    parser.add_argument("-b", "--BATCH", default=8, type=int, help="batch size")
     arguments = parser.parse_args()
 
     # ------------------判断CUDA模式----------------------
@@ -47,8 +47,7 @@ def main():
     dataset = Dataset(epochs=arguments.EPOCHS, batch=arguments.BATCH)
 
     network = Net.from_pretrained(args.bert_model, num_tag=len(args.labels)).to(device)
-    model = Model(dataset)
-
+    # model = Model(dataset)
     # ---------------------优化器-------------------------
     param_optimizer = list(network.named_parameters())
     no_decay = ['bias', 'LayerNorm.bias', 'LayerNorm.weight']
@@ -57,7 +56,7 @@ def main():
         {'params': [p for n, p in param_optimizer if not any(nd in n for nd in no_decay)], 'weight_decay': 0.01},
         {'params': [p for n, p in param_optimizer if any(nd in n for nd in no_decay)], 'weight_decay': 0.0}]
 
-    # t_total = num_train_steps
+    t_total = int(len(dataset.get_all_data()) / arguments.BATCH * arguments.EPOCHS)
 
     # ---------------------GPU半精度fp16-----------------------------
     if args.fp16:
@@ -82,7 +81,7 @@ def main():
         optimizer = BertAdam(optimizer_grouped_parameters,
                              lr=args.learning_rate,
                              warmup=args.warmup_proportion
-                             # ,t_total=t_total
+                             , t_total=t_total
                              )
 
     # ---------------------模型初始化----------------------
@@ -95,13 +94,6 @@ def main():
     eval_losses = []
     train_accuracy = []
     eval_accuracy = []
-
-    history = {
-        "train_loss": train_losses,
-        "train_acc": train_accuracy,
-        "eval_loss": eval_losses,
-        "eval_acc": eval_accuracy
-    }
 
     # ------------------------训练------------------------------
     best_f1 = 0
@@ -116,14 +108,7 @@ def main():
         batch = tuple(t.to(device) for t in batch)
         input_ids, input_mask, segment_ids, label_ids, output_mask = batch
         bert_encode = network(input_ids, segment_ids, input_mask).cpu()
-
-        if step == 45:
-            print(1)
         train_loss = network.loss_fn(bert_encode=bert_encode, tags=label_ids, output_mask=output_mask)
-        # try:
-        #     train_loss = network.loss_fn(bert_encode=bert_encode, tags=label_ids, output_mask=output_mask)
-        # except:
-        #     continue
 
         if args.gradient_accumulation_steps > 1:
             train_loss = train_loss / args.gradient_accumulation_steps
@@ -135,7 +120,7 @@ def main():
 
         if (step + 1) % args.gradient_accumulation_steps == 0:
             # modify learning rate with special warm up BERT uses
-            lr_this_step = args.learning_rate * warmup_linear(global_step, args.warmup_proportion)
+            lr_this_step = args.learning_rate * warmup_linear(global_step / t_total, args.warmup_proportion)
             for param_group in optimizer.param_groups:
                 param_group['lr'] = lr_this_step
             optimizer.step()
@@ -151,78 +136,59 @@ def main():
         print("train_acc: %f" % train_acc, "train_loss: %f" % train_loss.item(), "f1: %f" % f1,
               "using time: %f" % (time.time() - start), "step: %d" % step)
 
-        # x_val, y_val = dataset.next_validation_batch()
+    # -----------------------验证----------------------------
+    network.eval()
+    count = 0
+    y_predicts, y_labels = [], []
+    eval_loss, eval_acc, eval_f1 = 0, 0, 0
+    with torch.no_grad():
+        for step in range(dataset.get_step()):
+            x_val, y_val = dataset.next_validation_batch()
+            batch = create_batch_iter(mode='dev', X=x_val, y=y_val).dataset.tensors
+            batch = tuple(t.to(device) for t in batch)
+            input_ids, input_mask, segment_ids, label_ids, output_mask = batch
+            bert_encode = network(input_ids, segment_ids, input_mask).cpu()
+            eval_los = network.loss_fn(bert_encode=bert_encode, tags=label_ids, output_mask=output_mask)
+            eval_loss = eval_los + eval_loss
+            count += 1
+            predicts = network.predict(bert_encode, output_mask)
+            y_predicts.append(predicts)
 
-    # # -----------------------验证----------------------------
-    # network.eval()
-    # count = 0
-    # y_predicts, y_labels = [], []
-    # eval_loss, eval_acc, eval_f1 = 0, 0, 0
-    # with torch.no_grad():
-    #     for step, batch in enumerate(eval_iter):
-    #         batch = tuple(t.to(device) for t in batch)
-    #         input_ids, input_mask, segment_ids, label_ids, output_mask = batch
-    #         bert_encode = network(input_ids, segment_ids, input_mask).cpu()
-    #         eval_los = network.loss_fn(bert_encode=bert_encode, tags=label_ids, output_mask=output_mask)
-    #         eval_loss = eval_los + eval_loss
-    #         count += 1
-    #         predicts = network.predict(bert_encode, output_mask)
-    #         y_predicts.append(predicts)
-    #
-    #         label_ids = label_ids.view(1, -1)
-    #         label_ids = label_ids[label_ids != -1]
-    #         y_labels.append(label_ids)
-    #
-    #     eval_predicted = torch.cat(y_predicts, dim=0).cpu()
-    #     eval_labeled = torch.cat(y_labels, dim=0).cpu()
-    #
-    #     eval_acc, eval_f1 = network.acc_f1(eval_predicted, eval_labeled)
-    #     network.class_report(eval_predicted, eval_labeled)
-    #
-    #     logger.info(
-    #         '\n\ntrain_loss: %4f - eval_loss: %4f - train_acc:%4f - eval_acc:%4f - eval_f1:%4f\n'
-    #         % (train_loss.item(),
-    #            eval_loss.item() / count,
-    #            train_acc,
-    #            eval_acc,
-    #            eval_f1))
-    #
-    #     # 保存最好的模型
-    #     if eval_f1 > best_f1:
-    #         best_f1 = eval_f1
-    #         save_model(network, args.output_dir)
-    #
-    #     train_losses.append(train_loss.item())
-    #     train_accuracy.append(train_acc)
-    #     eval_losses.append(eval_loss.item() / count)
-    #     eval_accuracy.append(eval_acc)
-    #
-    # loss_acc_plot(history)
+            label_ids = label_ids.view(1, -1)
+            label_ids = label_ids[label_ids != -1]
+            y_labels.append(label_ids)
 
-    # """
-    # dataset.get_step() 获取数据的总迭代次数
-    # """
-    # best_score = 0
-    # for step in range(dataset.get_step()):
-    #     x_train, y_train = dataset.next_train_batch()
-    #     x_val, y_val = dataset.next_validation_batch()
-    #
-    #     # model.save_model(model, MODEL_PATH, overwrite=True)
-    #     print(str(step + 1) + "/" + str(dataset.get_step()))
-    #
-    #     train_iter, num_train_steps = create_batch_iter("train")
-    #     eval_iter = create_batch_iter("dev")
-    #     model = Net.from_pretrained(args.bert_model, num_tag=len(args.labels)).to(device)
-    #     for name, param in model.named_parameters():
-    #         if param.requires_grad:
-    #             print(name)
-    #
-    #     fit(model=model,
-    #         training_iter=train_iter,
-    #         eval_iter=eval_iter,
-    #         num_epoch=args.num_train_epochs,
-    #         num_train_steps=num_train_steps,
-    #         verbose=1)
+        eval_predicted = torch.cat(y_predicts, dim=0).cpu()
+        eval_labeled = torch.cat(y_labels, dim=0).cpu()
+
+        eval_acc, eval_f1 = network.acc_f1(eval_predicted, eval_labeled)
+        network.class_report(eval_predicted, eval_labeled)
+
+        logger.info('\n\ntrain_loss: %4f - eval_loss: %4f - train_acc:%4f - eval_acc:%4f - eval_f1:%4f\n'
+                    % (train_loss.item(),
+                       eval_loss.item() / count,
+                       train_acc,
+                       eval_acc,
+                       eval_f1))
+
+        # 保存最好的模型
+        if eval_f1 > best_f1:
+            best_f1 = eval_f1
+            save_model(network, args.output_dir)
+
+        train_losses.append(train_loss.item())
+        train_accuracy.append(train_acc)
+        eval_losses.append(eval_loss.item() / count)
+        eval_accuracy.append(eval_acc)
+
+    history = {
+        "train_loss": train_losses,
+        "train_acc": train_accuracy,
+        "eval_loss": eval_losses,
+        "eval_acc": eval_accuracy
+    }
+
+    loss_acc_plot(history)
 
 
 def warmup_linear(x, warmup=0.002):

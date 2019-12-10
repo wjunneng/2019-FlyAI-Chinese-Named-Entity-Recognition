@@ -40,6 +40,10 @@ class DataProcessor(object):
         """读取验证集 Gets a collection of `InputExample`s for the dev set."""
         raise NotImplementedError()
 
+    def get_examples(self, X):
+        """读取单条数据"""
+        raise NotImplementedError()
+
     def get_labels(self):
         """读取标签 Gets the list of labels for this data set."""
         raise NotImplementedError()
@@ -76,6 +80,16 @@ class MyPro(DataProcessor):
         examples = self._create_example(lines, "dev")
         return examples
 
+    def get_examples(self, X):
+        examples = []
+        for i, line in enumerate(X):
+            guid = "predict-%d" % i
+            text_a = ' '.join(line.tolist())
+            label = None
+            example = InputExample(guid=guid, text_a=text_a, label=label)
+            examples.append(example)
+        return examples
+
     def get_labels(self):
         return args.labels
 
@@ -93,16 +107,20 @@ def convert_examples_to_features(examples, label_list, max_seq_length, tokenizer
                 sub_vocab[_line] = 1
 
     features = []
+    labels = None
     for ex_index, example in enumerate(examples):
         tokens_a = tokenizer.tokenize(example.text_a)
-        labels = example.label.split()
+        if example.label is not None:
+            labels = example.label.split()
 
-        if len(tokens_a) == 0 or len(labels) == 0:
+        if len(tokens_a) == 0:
             continue
 
         if len(tokens_a) > max_seq_length - 2:
             tokens_a = tokens_a[:(max_seq_length - 2)]
-            labels = labels[:(max_seq_length - 2)]
+            if labels is not None:
+                labels = labels[:(max_seq_length - 2)]
+
         # ----------------处理source--------------
         # 句子首尾加入标示符
         tokens = ["[CLS]"] + tokens_a + ["[SEP]"]
@@ -121,10 +139,13 @@ def convert_examples_to_features(examples, label_list, max_seq_length, tokenizer
         assert len(segment_ids) == max_seq_length
 
         # ---------------处理target----------------
-        # Notes: label_id中不包括[CLS]和[SEP]
-        label_id = [label_map[l] for l in labels]
-        label_padding = [-1] * (max_seq_length - len(label_id))
-        label_id += label_padding
+        if labels is not None:
+            # Notes: label_id中不包括[CLS]和[SEP]
+            label_id = [label_map[l] for l in labels]
+            label_padding = [-1] * (max_seq_length - len(label_id))
+            label_id += label_padding
+        else:
+            label_id = [-1] * max_seq_length
 
         # output_mask用来过滤bert输出中sub_word的输出,只保留单词的第一个输出(As recommended by jocob in his paper)
         # 此外，也是为了适应crf

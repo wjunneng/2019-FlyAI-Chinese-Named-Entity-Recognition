@@ -27,6 +27,8 @@ def create_batch_iter(mode, X, y):
         examples = processor.get_train_examples(X=X, y=y)
     elif mode == 'dev':
         examples = processor.get_dev_examples(X=X, y=y)
+    elif mode == 'predict':
+        examples = processor.get_examples(X=X)
     else:
         raise ValueError("Invalid mode %s" % mode)
     batch_size = len(X)
@@ -51,6 +53,8 @@ def create_batch_iter(mode, X, y):
     if mode == "train":
         sampler = RandomSampler(data)
     elif mode == "dev":
+        sampler = SequentialSampler(data)
+    elif mode == 'predict':
         sampler = SequentialSampler(data)
     else:
         raise ValueError("Invalid mode %s" % mode)
