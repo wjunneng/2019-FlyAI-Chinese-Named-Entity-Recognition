@@ -5,6 +5,7 @@ import args
 from model_util import load_model, save_model
 from processor import Processor
 from data_loader import create_batch_iter
+import numpy as np
 
 __import__('net', fromlist=["Net"])
 
@@ -21,16 +22,37 @@ class Model(Base):
         self.net = load_model(self.bert_model).to(self.device)
         self.processor = Processor()
 
+    @staticmethod
+    def _split_x_data(x_data, max_seq_length):
+        result_list = []
+        current_list = ""
+        for element in x_data[0]:
+            if len(current_list + element) < max_seq_length - 2:
+                current_list = current_list + element + ' '
+            else:
+                current_list = current_list.strip()
+                result_list.append(current_list.split(' '))
+                current_list = element + ' '
+                continue
+
+        current_list = current_list.split(' ')
+        current_list.remove("")
+        result_list.append(current_list)
+
+        return result_list
+
     def predict(self, **data):
         if self.net is None:
             self.net = torch.load(self.bert_model)
-        x_data = self.data.predict_data(**data)
-        batch = create_batch_iter(mode='predict', X=x_data, y=None).dataset.tensors
-        batch = tuple(t.to(self.device) for t in batch)
-        input_ids, input_mask, segment_ids, label_ids, output_mask = batch
-        bert_encode = self.net(input_ids, segment_ids, input_mask).cpu()
-        predicts = self.net.predict(bert_encode, output_mask).numpy()
-        predicts = self.processor.output_y(predicts)
+        x_datas = self.data.predict_data(**data)
+        x_datas = Model._split_x_data(x_datas, args.max_seq_length)
+        predicts = []
+        for x_data in x_datas:
+            batch = create_batch_iter(mode='predict', X=np.array([x_data]), y=None).dataset.tensors
+            batch = tuple(t.to(self.device) for t in batch)
+            input_ids, input_mask, segment_ids, label_ids, output_mask = batch
+            bert_encode = self.net(input_ids, segment_ids, input_mask).cpu()
+            predicts.extend(self.processor.output_y(self.net.predict(bert_encode, output_mask).numpy()))
 
         return predicts
 
@@ -40,28 +62,54 @@ class Model(Base):
         labels = []
         for data in datas:
             x_data = self.data.predict_data(**data)
-            batch = create_batch_iter(mode='predict', X=x_data, y=None).dataset.tensors
-            batch = tuple(t.to(self.device) for t in batch)
-            input_ids, input_mask, segment_ids, label_ids, output_mask = batch
-            bert_encode = self.net(input_ids, segment_ids, input_mask).cpu()
-            predicts = self.net.predict(bert_encode, output_mask).numpy()
-            labels.append(self.processor.output_y(predicts))
+            x_datas = Model._split_x_data(x_data, args.max_seq_length)
+            predicts = []
+            for x_data in x_datas:
+                batch = create_batch_iter(mode='predict', X=np.array([x_data]), y=None).dataset.tensors
+                batch = tuple(t.to(self.device) for t in batch)
+                input_ids, input_mask, segment_ids, label_ids, output_mask = batch
+                bert_encode = self.net(input_ids, segment_ids, input_mask).cpu()
+                predicts.extend(self.processor.output_y(self.net.predict(bert_encode, output_mask).numpy()))
+
+            labels.append(predicts)
 
         return labels
 
     def save_model(self, network, path, name=None, overwrite=False):
         save_model(model=network, output_dir=path)
 
-    # def batch_iter(self, x, y, batch_size=128):
-    #     """生成批次数据"""
-    #     data_len = len(x)
-    #     num_batch = int((data_len - 1) / batch_size) + 1
+    # def predict(self, **data):
+    #     if self.net is None:
+    #         self.net = torch.load(self.bert_model)
+    #     x_data = self.data.predict_data(**data)
+    #     batch = create_batch_iter(mode='predict', X=x_data, y=None).dataset.tensors
+    #     batch = tuple(t.to(self.device) for t in batch)
+    #     input_ids, input_mask, segment_ids, label_ids, output_mask = batch
+    #     bert_encode = self.net(input_ids, segment_ids, input_mask).cpu()
+    #     predicts = self.processor.output_y(self.net.predict(bert_encode, output_mask).numpy())
+    #     for index in range(len(x_data)):
+    #         x_data_lengths = len(x_data[index])
+    #         predicts_length = len(predicts)
+    #         if predicts_length == x_data_lengths:
+    #             continue
+    #         elif predicts_length > x_data_lengths:
+    #             predicts = predicts[:x_data_lengths]
+    #         else:
+    #             predicts.extend(['O'] * (x_data_lengths - predicts_length))
     #
-    #     indices = numpy.random.permutation(numpy.arange(data_len))
-    #     x_shuffle = x[indices]
-    #     y_shuffle = y[indices]
+    #     return predicts
     #
-    #     for i in range(num_batch):
-    #         start_id = i * batch_size
-    #         end_id = min((i + 1) * batch_size, data_len)
-    #         yield x_shuffle[start_id:end_id], y_shuffle[start_id:end_id]
+    # def predict_all(self, datas):
+    #     if self.net is None:
+    #         self.net = torch.load(self.bert_model)
+    #     labels = []
+    #     for data in datas:
+    #         x_data = self.data.predict_data(**data)
+    #         batch = create_batch_iter(mode='predict', X=x_data, y=None).dataset.tensors
+    #         batch = tuple(t.to(self.device) for t in batch)
+    #         input_ids, input_mask, segment_ids, label_ids, output_mask = batch
+    #         bert_encode = self.net(input_ids, segment_ids, input_mask).cpu()
+    #         predicts = self.net.predict(bert_encode, output_mask).numpy()
+    #         labels.append(self.processor.output_y(predicts))
+    #
+    #     return labels
