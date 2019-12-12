@@ -1,6 +1,4 @@
 # -*- coding: utf-8 -*
-import numpy
-import os
 import torch
 from flyai.model.base import Base
 import args
@@ -32,8 +30,9 @@ class Model(Base):
         input_ids, input_mask, segment_ids, label_ids, output_mask = batch
         bert_encode = self.net(input_ids, segment_ids, input_mask).cpu()
         predicts = self.net.predict(bert_encode, output_mask).numpy()
+        predicts = self.processor.output_y(predicts)
 
-        return self.processor.output_y(predicts)
+        return predicts
 
     def predict_all(self, datas):
         if self.net is None:

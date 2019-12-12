@@ -20,7 +20,6 @@ from optimization import BertAdam
 import args as arguments
 from net import Net
 from model_util import save_model
-import copy
 import os
 
 logger = init_logger("torch", logging_path=arguments.log_path)
@@ -31,6 +30,8 @@ torch.cuda.manual_seed_all(arguments.seed)
 warnings.filterwarnings('ignore')
 
 remote_helper.get_remote_date("https://www.flyai.com/m/chinese_base.zip")
+
+os.environ['CUDA_LAUNCH_BLOCKING'] = "1"
 
 
 def main():
@@ -105,8 +106,8 @@ def main():
     else:
         optimizer = BertAdam(optimizer_grouped_parameters,
                              lr=arguments.learning_rate,
-                             warmup=arguments.warmup_proportion
-                             , t_total=t_total
+                             warmup=arguments.warmup_proportion,
+                             t_total=t_total
                              )
 
     # ---------------------模型初始化----------------------
@@ -128,7 +129,7 @@ def main():
             batch = create_batch_iter(mode='dev', X=x_train, y=y_train).dataset.tensors
             batch = tuple(t.to(device) for t in batch)
             input_ids, input_mask, segment_ids, label_ids, output_mask = batch
-            bert_encode = network(input_ids, segment_ids, input_mask).cpu()
+            bert_encode = network(input_ids, segment_ids, input_mask)
             train_loss = network.loss_fn(bert_encode=bert_encode, tags=label_ids, output_mask=output_mask)
 
             if arguments.gradient_accumulation_steps > 1:
@@ -155,35 +156,11 @@ def main():
                 global_step += 1
 
             predicts = network.predict(bert_encode, output_mask)
-            labels = copy.deepcopy(label_ids)
             label_ids = label_ids.view(1, -1)
             label_ids = label_ids[label_ids != -1]
             label_ids = label_ids.cpu()
 
-            try:
-                train_acc, f1 = network.acc_f1(predicts, label_ids)
-            except:
-                logger.info("-----------------Example-----------------")
-                logger.info("input_ids: %d" % len(input_ids.view(1, -1).cpu().numpy()[0]))
-                logger.info("input_mask: %d" % len(input_mask.view(1, -1).cpu().numpy()[0]))
-                logger.info("output_mask: %d " % len(output_mask.view(1, -1).cpu().numpy()[0]))
-                logger.info("segment_ids: %d " % len(segment_ids.view(1, -1).cpu().numpy()[0]))
-                logger.info("predicts: %d " % len(predicts.view(1, -1).cpu().numpy()[0]))
-                logger.info("label_ids: %d " % len(label_ids.view(1, -1).cpu().numpy()[0]))
-
-                logger.info("input_ids: %s" % input_ids.view(1, -1).cpu().numpy()[0])
-                logger.info("input_mask: %s" % input_mask.view(1, -1).cpu().numpy()[0])
-                logger.info("output_mask: %s " % output_mask.view(1, -1).cpu().numpy()[0])
-                logger.info("segment_ids: %s " % segment_ids.view(1, -1).cpu().numpy()[0])
-                logger.info("predicts: %s " % predicts.view(1, -1).cpu().numpy()[0])
-                logger.info("label_ids: %s " % label_ids.view(1, -1).cpu().numpy()[0])
-                logger.info("labels: %s " % labels)
-
-                logger.info("x_train: %s " % x_train)
-                logger.info("y_train: %s " % y_train)
-                print("x_train: %s " % x_train)
-                print("y_train: %s " % y_train)
-                continue
+            train_acc, f1 = network.acc_f1(predicts, label_ids)
 
         print("train_acc: %f" % train_acc, "train_loss: %f" % train_loss.item(), "f1: %f" % f1,
               "using time: %f" % (time.time() - start), "step: %d" % step)

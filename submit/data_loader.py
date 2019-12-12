@@ -28,10 +28,13 @@ def create_batch_iter(mode, X, y):
     processor, tokenizer = init_params()
     if mode == 'train':
         examples = processor.get_train_examples(X=X, y=y)
+        max_seq_length = args.max_seq_length
     elif mode == 'dev':
         examples = processor.get_dev_examples(X=X, y=y)
+        max_seq_length = args.max_seq_length
     elif mode == 'predict':
         examples = processor.get_examples(X=X)
+        max_seq_length = processor._calculate_max_seq_length(X=X)
     else:
         raise ValueError("Invalid mode %s" % mode)
     batch_size = len(X)
@@ -39,7 +42,7 @@ def create_batch_iter(mode, X, y):
     label_list = processor.get_labels()
 
     # 特征
-    features = convert_examples_to_features(examples, label_list, args.max_seq_length, tokenizer)
+    features = convert_examples_to_features(examples, label_list, max_seq_length, tokenizer)
 
     all_input_ids = torch.tensor([f.input_ids for f in features], dtype=torch.long)
     all_input_mask = torch.tensor([f.input_mask for f in features], dtype=torch.long)

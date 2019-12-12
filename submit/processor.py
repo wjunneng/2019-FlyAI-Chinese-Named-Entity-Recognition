@@ -30,8 +30,5 @@ class Processor(Base):
         """
         label = []
         for i in index:
-            if i != 0:
-                label.append(self.label_map[i])
-            else:
-                break
+            label.append(self.label_map[i])
         return label

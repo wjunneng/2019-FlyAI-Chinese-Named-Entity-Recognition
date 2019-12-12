@@ -79,6 +79,17 @@ class MyPro(DataProcessor):
             examples.append(example)
         return examples
 
+    def _calculate_max_seq_length(self, X):
+        max_seq_length = 0
+        for i in X:
+            current_seq_length = 0
+            for j in i:
+                current_seq_length += len(j)
+            if current_seq_length > max_seq_length:
+                max_seq_length = current_seq_length
+
+        return max_seq_length + 2
+
     def get_train_examples(self, X, y):
         lines = self._read_data(X=X, y=y)
         examples = self._create_example(lines, "train")

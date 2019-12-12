@@ -15,10 +15,10 @@ vocab_type = "word"
 # vocab_type = "words"
 use_standard = True
 
+max_seq_length = 200
 task_name = "bert_ner"  # 训练任务名称
 token_words = ["[UNK]", "[SEP]", "[PAD]", "[CLS]", "[MASK]"]
 flag_words = ["[PAD]", "[CLP]", "[SEP]", "[UNK]"]
-max_seq_length = 200
 do_lower_case = True
 learning_rate = 1e-4
 warmup_proportion = 0.1
@@ -27,6 +27,6 @@ seed = 2019
 gradient_accumulation_steps = 1
 fp16 = False
 loss_scale = 0.
-labels = ['B-ROLE', 'B-LAW', 'B-LOC', 'B-CRIME', 'B-TIME', 'B-ORG', 'B-PER', 'I-PER', 'I-ORG', 'I-LOC', 'I-LAW', 'I-ROLE',
-          'I-CRIME', 'I-TIME', 'O']
+labels = ['B-ROLE', 'B-LAW', 'B-LOC', 'B-CRIME', 'B-TIME', 'B-ORG', 'B-PER', 'I-PER', 'I-ORG', 'I-LOC', 'I-LAW',
+          'I-ROLE', 'I-CRIME', 'I-TIME', 'O']
 device = "cuda:0"
