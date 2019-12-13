@@ -52,15 +52,6 @@ class DataProcessor(object):
     def _read_data(cls, X, y):
         lines = []
         for source, target in zip(X, y):
-            if args.vocab_type == 'word':
-                sources = []
-                targets = []
-                for (s, t) in zip(source, target):
-                    sources.extend(s)
-                    targets.extend([t] * len(s))
-                source = np.array(sources)
-                target = np.array(targets)
-
             lines.append({"source": source, "target": target})
 
         return lines
@@ -73,7 +64,7 @@ class MyPro(DataProcessor):
         examples = []
         for i, line in enumerate(lines):
             guid = "%s-%d" % (set_type, i)
-            text_a = ' '.join(line["source"].tolist())
+            text_a = line["source"].tolist()
             label = ' '.join(line["target"].tolist())
             example = InputExample(guid=guid, text_a=text_a, label=label)
             examples.append(example)
@@ -114,43 +105,25 @@ class MyPro(DataProcessor):
         return args.labels
 
 
+def convert_tokens_to_ids(tokenizer, tokens):
+    result = []
+    for token in tokens:
+        if token in tokenizer:
+            result.append(tokenizer.index(token))
+        else:
+            result.append(tokenizer.index(args.unknown_token))
+
+    return result
+
+
 def convert_examples_to_features(examples, label_list, max_seq_length, tokenizer):
     # 标签转换为数字
     label_map = {label: i for i, label in enumerate(label_list)}
 
-    # load sub_vocab
-    sub_vocab = {}
-    if args.use_standard:
-        with open(args.STAND_VOCAB_FILE, 'r') as fr:
-            for line in fr:
-                _line = line.strip('\n')
-                if "##" in _line and sub_vocab.get(_line) is None:
-                    sub_vocab[_line] = 1
-
-    else:
-        with open(args.VOCAB_FILE, 'r') as fr:
-            for line in fr:
-                _line = line.strip('\n')
-                if sub_vocab.get(_line) is None:
-                    sub_vocab[_line] = 1
-
     features = []
     labels = None
     for ex_index, example in enumerate(examples):
-        output_mask = []
-        if args.vocab_type == 'words' and args.use_standard is True:
-            text_a = []
-            label = []
-            for (s, t) in zip(example.text_a.split(' '), example.label.split(' ')):
-                s = list(s)
-                text_a.extend(s)
-                label.extend([t] * len(s))
-                mask = [1] + [0] * (len(s) - 1)
-                output_mask.extend(mask)
-            example.text_a = ' '.join(text_a)
-            example.label = ' '.join(label)
-
-        tokens_a = tokenizer.tokenize(example.text_a)
+        tokens_a = example.text_a
         if example.label is not None:
             labels = example.label.split()
 
@@ -167,7 +140,7 @@ def convert_examples_to_features(examples, label_list, max_seq_length, tokenizer
         tokens = ["[CLS]"] + tokens_a + ["[SEP]"]
         segment_ids = [0] * len(tokens)
         # 词转换成数字
-        input_ids = tokenizer.convert_tokens_to_ids(tokens)
+        input_ids = convert_tokens_to_ids(tokenizer, tokens)
         input_mask = [1] * len(input_ids)
         padding = [0] * (max_seq_length - len(input_ids))
 
@@ -190,12 +163,7 @@ def convert_examples_to_features(examples, label_list, max_seq_length, tokenizer
 
         # output_mask用来过滤bert输出中sub_word的输出,只保留单词的第一个输出(As recommended by jocob in his paper)
         # 此外，也是为了适应crf
-        if args.use_standard:
-            if args.vocab_type == 'word':
-                output_mask = [0 if sub_vocab.get(t) is not None else 1 for t in tokens_a]
-        else:
-            output_mask = [0 if sub_vocab.get(t) is None else 1 for t in tokens_a]
-        output_mask = [0] + output_mask + [0]
+        output_mask = [0] + len(tokens_a) * [1] + [0]
         output_mask += padding
 
         # ----------------处理后结果-------------------------
@@ -207,10 +175,11 @@ def convert_examples_to_features(examples, label_list, max_seq_length, tokenizer
         # label_id:          T  T  O  O  O
         # output_mask:     0 1  1  1  1  1   0     0   0 0 0
         # --------------看结果是否合理------------------------
-        #
+
         # if ex_index < 1:
         #     logger.info("-----------------Example-----------------")
         #     logger.info("guid: %s" % (example.guid))
+        #     logger.info("text_a: %s" % example.text_a)
         #     logger.info("tokens: %s" % " ".join([str(x) for x in tokens]))
         #     logger.info("input_ids: %s" % " ".join([str(x) for x in input_ids]))
         #     logger.info("input_mask: %s" % " ".join([str(x) for x in input_mask]))

@@ -4,23 +4,21 @@ Created on Mon Oct 30 19:44:02 2017
 
 @author: user
 """
+import os
 import argparse
 import warnings
-
+import time
+import torch
 from flyai.dataset import Dataset
 from flyai.utils import remote_helper
 
+from net import FGM
 from Logginger import init_logger
 from data_loader import create_batch_iter
-from args import VOCAB_FILE, WORDS_FILE, token_words
-import time
-import torch
-import json
 from optimization import BertAdam
 import args as arguments
 from net import Net
 from model_util import save_model
-import os
 
 logger = init_logger("torch", logging_path=arguments.log_path)
 
@@ -40,7 +38,7 @@ def main():
     """
     parser = argparse.ArgumentParser()
     parser.add_argument("-e", "--EPOCHS", default=50, type=int, help="train epochs")
-    parser.add_argument("-b", "--BATCH", default=8, type=int, help="batch size")
+    parser.add_argument("-b", "--BATCH", default=10, type=int, help="batch size")
     args = parser.parse_args()
 
     # ------------------判断CUDA模式----------------------
@@ -51,24 +49,6 @@ def main():
     device = torch.device(device)
 
     # ------------------预处理数据----------------------
-    if not arguments.use_standard:
-        with open(VOCAB_FILE, 'w') as file1, open(WORDS_FILE, 'r') as file2:
-            vocabs = ""
-            for token in token_words:
-                vocabs = vocabs + token + '\n'
-            vocab = json.load(file2).keys()
-
-            if arguments.vocab_type == 'word':
-                current_vocabs = set()
-                for word in vocab:
-                    current_vocabs.update(set(word))
-                vocab = list(current_vocabs)
-
-            for word in vocab:
-                vocabs = vocabs + word + '\n'
-
-            file1.write(vocabs)
-
     dataset = Dataset(epochs=args.EPOCHS, batch=args.BATCH)
 
     network = Net.from_pretrained(arguments.bert_model, num_tag=len(arguments.labels)).to(device)
@@ -117,6 +97,7 @@ def main():
     eval_losses = []
     train_accuracy = []
     eval_accuracy = []
+    fgm = FGM(network)
 
     best_f1 = 0
     start = time.time()
@@ -138,6 +119,16 @@ def main():
                 optimizer.backward(train_loss)
             else:
                 train_loss.backward()
+
+            # 对抗训练
+            # 在embedding上添加对抗扰动
+            fgm.attack()
+            bert_encode = network(input_ids, segment_ids, input_mask)
+            train_loss = network.loss_fn(bert_encode=bert_encode, tags=label_ids, output_mask=output_mask)
+            # 反向传播，并在正常的grad基础上，累加对抗训练的梯度
+            train_loss.backward()
+            # 恢复embedding参数
+            fgm.restore()
 
             if (step + 1) % arguments.gradient_accumulation_steps == 0:
                 def warmup_linear(x, warmup=0.002):
@@ -161,8 +152,12 @@ def main():
 
             train_acc, f1 = network.acc_f1(predicts, label_ids)
 
-        print("train_acc: %f" % train_acc, "train_loss: %f" % train_loss.item(), "f1: %f" % f1,
-              "using time: %f" % (time.time() - start), "step: %d" % step)
+        logger.info("\n train_acc: %f - train_loss: %f - f1: %f - using time: %f - step: %d \n" % (train_acc,
+                                                                                                   train_loss.item(),
+                                                                                                   f1,
+                                                                                                   (
+                                                                                                           time.time() - start),
+                                                                                                   step))
 
         # -----------------------验证----------------------------
         network.eval()

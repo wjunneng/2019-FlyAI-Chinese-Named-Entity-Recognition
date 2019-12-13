@@ -1,7 +1,6 @@
 import torch
 from torch.utils.data import TensorDataset, DataLoader, RandomSampler, SequentialSampler
-
-from tokenization import BertTokenizer
+import json
 from data_processor import MyPro, convert_examples_to_features
 import args as args
 from Logginger import init_logger
@@ -13,12 +12,12 @@ def init_params():
     processors = {"bert_ner": MyPro}
     task_name = args.task_name.lower()
     if task_name not in processors:
-        raise ValueError("Task not found: %s" % (task_name))
+        raise ValueError("Task not found: %s" % task_name)
     processor = processors[task_name]()
-    if args.use_standard:
-        tokenizer = BertTokenizer(vocab_file='./vocab.txt')
-    else:
-        tokenizer = BertTokenizer(vocab_file=args.VOCAB_FILE)
+
+    with open(args.WORDS_FILE, 'r') as file:
+        tokenizer = args.token_words
+        tokenizer.extend(list(json.load(file).keys()))
 
     return processor, tokenizer
 
