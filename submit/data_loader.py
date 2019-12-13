@@ -39,11 +39,13 @@ def create_batch_iter(mode, X, y):
     label_list = processor.get_labels()
 
     # 方法一： 调整维度
-    max_seq_length = processor._calculate_max_seq_length(X=X)
-    if args.max_seq_length < max_seq_length:
-        max_seq_length = args.max_seq_length
+    if args.use_calculate_max_seq_length:
+        max_seq_length = processor._calculate_max_seq_length(X=X)
+        if args.max_seq_length < max_seq_length:
+            max_seq_length = args.max_seq_length
     # 方法二： 固定维度
-    # max_seq_length = args.max_seq_length
+    else:
+        max_seq_length = args.max_seq_length
 
     # 特征
     features = convert_examples_to_features(examples, label_list, max_seq_length, tokenizer)

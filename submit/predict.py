@@ -15,4 +15,4 @@ p = model.predict_all([{"source": "在 闭幕 会议 上 ， 联合国 副 秘�
                        {"source": "在 闭幕 会议 上 ， 联合国 副 秘书长 兼 联合国 国际 禁毒署 署长 阿拉 奇 代表 联合国 秘书长 安南 致 闭幕词 。"}])
 
 print([len(i) for i in p])
-print(len(p))
+print(p)

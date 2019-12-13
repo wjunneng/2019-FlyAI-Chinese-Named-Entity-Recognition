@@ -53,22 +53,21 @@ def main():
     # ------------------预处理数据----------------------
     if not arguments.use_standard:
         with open(VOCAB_FILE, 'w') as file1, open(WORDS_FILE, 'r') as file2:
+            vocabs = ""
             for token in token_words:
-                file1.write(token + '\n')
+                vocabs = vocabs + token + '\n'
             vocab = json.load(file2).keys()
 
             if arguments.vocab_type == 'word':
-                vocabs = set()
+                current_vocabs = set()
                 for word in vocab:
-                    vocabs.update(set(word))
-                vocab = list(vocabs)
+                    current_vocabs.update(set(word))
+                vocab = list(current_vocabs)
 
-            vocabs = ""
             for word in vocab:
                 vocabs = vocabs + word + '\n'
 
-            if not os.path.exists(VOCAB_FILE):
-                file1.write(vocabs)
+            file1.write(vocabs)
 
     dataset = Dataset(epochs=args.EPOCHS, batch=args.BATCH)
 

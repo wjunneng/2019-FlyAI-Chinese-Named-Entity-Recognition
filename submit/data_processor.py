@@ -121,7 +121,7 @@ def convert_examples_to_features(examples, label_list, max_seq_length, tokenizer
     # load sub_vocab
     sub_vocab = {}
     if args.use_standard:
-        with open('./vocab.txt', 'r') as fr:
+        with open(args.STAND_VOCAB_FILE, 'r') as fr:
             for line in fr:
                 _line = line.strip('\n')
                 if "##" in _line and sub_vocab.get(_line) is None:
@@ -137,6 +137,19 @@ def convert_examples_to_features(examples, label_list, max_seq_length, tokenizer
     features = []
     labels = None
     for ex_index, example in enumerate(examples):
+        output_mask = []
+        if args.vocab_type == 'words' and args.use_standard is True:
+            text_a = []
+            label = []
+            for (s, t) in zip(example.text_a.split(' '), example.label.split(' ')):
+                s = list(s)
+                text_a.extend(s)
+                label.extend([t] * len(s))
+                mask = [1] + [0] * (len(s) - 1)
+                output_mask.extend(mask)
+            example.text_a = ' '.join(text_a)
+            example.label = ' '.join(label)
+
         tokens_a = tokenizer.tokenize(example.text_a)
         if example.label is not None:
             labels = example.label.split()
@@ -178,7 +191,8 @@ def convert_examples_to_features(examples, label_list, max_seq_length, tokenizer
         # output_mask用来过滤bert输出中sub_word的输出,只保留单词的第一个输出(As recommended by jocob in his paper)
         # 此外，也是为了适应crf
         if args.use_standard:
-            output_mask = [0 if sub_vocab.get(t) is not None else 1 for t in tokens_a]
+            if args.vocab_type == 'word':
+                output_mask = [0 if sub_vocab.get(t) is not None else 1 for t in tokens_a]
         else:
             output_mask = [0 if sub_vocab.get(t) is None else 1 for t in tokens_a]
         output_mask = [0] + output_mask + [0]
