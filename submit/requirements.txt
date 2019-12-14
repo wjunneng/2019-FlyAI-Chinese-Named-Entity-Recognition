@@ -1,7 +1,0 @@
-flyai
-numpy
-Pillow
-tqdm
-boto3
-torch==1.2.0
-torchvision==0.4.0
