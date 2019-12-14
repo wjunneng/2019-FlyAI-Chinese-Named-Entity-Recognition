@@ -25,9 +25,9 @@ class InputExample(object):
 
 
 class InputFeature(object):
-    '''
+    """
     A single set of features of data.
-    '''
+    """
 
     def __init__(self, input_ids, input_mask, segment_ids, label_id, input_len):
         self.input_ids = input_ids
@@ -83,9 +83,9 @@ class BertProcessor(object):
                 tokens_b.pop()
 
     def create_examples(self, lines, example_type, cached_examples_file):
-        '''
+        """
         Creates examples for data
-        '''
+        """
         pbar = ProgressBar(n_total=len(lines), desc='create examples')
         if cached_examples_file.exists():
             logger.info("Loading examples from cached file %s", cached_examples_file)
@@ -106,7 +106,7 @@ class BertProcessor(object):
         return examples
 
     def create_features(self, examples, max_seq_len, cached_features_file):
-        '''
+        """
         # The convention in BERT is:
         # (a) For sequence pairs:
         #  tokens:   [CLS] is this jack ##son ##ville ? [SEP] no it is not . [SEP]
@@ -114,7 +114,7 @@ class BertProcessor(object):
         # (b) For single sequences:
         #  tokens:   [CLS] the dog is hairy . [SEP]
         #  type_ids:   0   0   0   0  0     0   0
-        '''
+        """
         pbar = ProgressBar(n_total=len(examples), desc='create features')
         if cached_features_file.exists():
             logger.info("Loading features from cached file %s", cached_features_file)

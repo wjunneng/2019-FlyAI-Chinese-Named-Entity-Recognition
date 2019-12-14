@@ -71,7 +71,7 @@ if __name__ == "__main__":
                                      args.share_type,
                                      args.pytorch_dump_path)
 
-'''
+"""
 example:
 
 python convert_albert_tf_checkpoint_to_pytorch.py \
@@ -86,4 +86,4 @@ python convert_albert_tf_checkpoint_to_pytorch.py \
     --pytorch_dump_path=/home/wjunneng/Ubuntu/NLP/nlp/albert_lstm_crf_ner/src/albert/pretrain/pytorch/albert_base_zh/pytorch_model.bin \
     --share_type=all
 
-'''
+"""

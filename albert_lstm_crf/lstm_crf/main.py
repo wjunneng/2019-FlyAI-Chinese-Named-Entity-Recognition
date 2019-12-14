@@ -101,7 +101,7 @@ class NER(object):
                 self.model.train()
                 index += 1
                 # 与optimizer.zero_grad()作用一样
-                self.model.zero_grad()  
+                self.model.zero_grad()
                 batch = tuple(t.to(DEVICE) for t in batch)
                 b_input_ids, b_input_mask, b_labels, b_out_masks = batch
 

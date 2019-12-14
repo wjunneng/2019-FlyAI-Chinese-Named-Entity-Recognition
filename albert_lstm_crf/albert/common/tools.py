@@ -10,6 +10,8 @@ from pathlib import Path
 import logging
 
 logger = logging.getLogger()
+
+
 def print_config(config):
     info = "Running with the following configs:\n"
     for k, v in config.items():
@@ -17,13 +19,14 @@ def print_config(config):
     print("\n" + info + "\n")
     return
 
+
 def init_logger(log_file=None, log_file_level=logging.NOTSET):
-    '''
+    """
     Example:
         >>> init_logger(log_file)
         >>> logger.info("abc'")
-    '''
-    if isinstance(log_file,Path):
+    """
+    if isinstance(log_file, Path):
         log_file = str(log_file)
     # log_format = logging.Formatter("[%(asctime)s %(levelname)s] %(message)s")
     log_format = logging.Formatter("%(message)s")
@@ -39,13 +42,14 @@ def init_logger(log_file=None, log_file_level=logging.NOTSET):
         logger.addHandler(file_handler)
     return logger
 
+
 def seed_everything(seed=1029):
-    '''
+    """
     设置整个开发环境的seed
     :param seed:
     :param device:
     :return:
-    '''
+    """
     random.seed(seed)
     os.environ['PYTHONHASHSEED'] = str(seed)
     np.random.seed(seed)
@@ -82,13 +86,13 @@ def prepare_device(n_gpu_use):
 
 
 def model_device(n_gpu, model):
-    '''
+    """
     判断环境 cpu还是gpu
     支持单机多卡
     :param n_gpu:
     :param model:
     :return:
-    '''
+    """
     device, device_ids = prepare_device(n_gpu)
     if len(device_ids) > 1:
         logger.info(f"current {len(device_ids)} GPUs")
@@ -100,7 +104,7 @@ def model_device(n_gpu, model):
 
 
 def restore_checkpoint(resume_path, model=None):
-    '''
+    """
     加载模型
     :param resume_path:
     :param model:
@@ -108,7 +112,7 @@ def restore_checkpoint(resume_path, model=None):
     :return:
     注意： 如果是加载Bert模型的话，需要调整，不能使用该模式
     可以使用模块自带的Bert_model.from_pretrained(state_dict = your save state_dict)
-    '''
+    """
     if isinstance(resume_path, Path):
         resume_path = str(resume_path)
     checkpoint = torch.load(resume_path)
@@ -119,17 +123,17 @@ def restore_checkpoint(resume_path, model=None):
         model.module.load_state_dict(states)
     else:
         model.load_state_dict(states)
-    return [model,best,start_epoch]
+    return [model, best, start_epoch]
 
 
 def save_pickle(data, file_path):
-    '''
+    """
     保存成pickle文件
     :param data:
     :param file_name:
     :param pickle_path:
     :return:
-    '''
+    """
     if isinstance(file_path, Path):
         file_path = str(file_path)
     with open(file_path, 'wb') as f:
@@ -137,25 +141,25 @@ def save_pickle(data, file_path):
 
 
 def load_pickle(input_file):
-    '''
+    """
     读取pickle文件
     :param pickle_path:
     :param file_name:
     :return:
-    '''
+    """
     with open(str(input_file), 'rb') as f:
         data = pickle.load(f)
     return data
 
 
 def save_json(data, file_path):
-    '''
+    """
     保存成json文件
     :param data:
     :param json_path:
     :param file_name:
     :return:
-    '''
+    """
     if not isinstance(file_path, Path):
         file_path = Path(file_path)
     # if isinstance(data,dict):
@@ -165,17 +169,18 @@ def save_json(data, file_path):
 
 
 def load_json(file_path):
-    '''
+    """
     加载json文件
     :param json_path:
     :param file_name:
     :return:
-    '''
+    """
     if not isinstance(file_path, Path):
         file_path = Path(file_path)
     with open(str(file_path), 'r') as f:
         data = json.load(f)
     return data
+
 
 def save_model(model, model_path):
     """ 存储不含有显卡信息的state_dict或model
@@ -193,15 +198,16 @@ def save_model(model, model_path):
         state_dict[key] = state_dict[key].cpu()
     torch.save(state_dict, model_path)
 
+
 def load_model(model, model_path):
-    '''
+    """
     加载模型
     :param model:
     :param model_name:
     :param model_path:
     :param only_param:
     :return:
-    '''
+    """
     if isinstance(model_path, Path):
         model_path = str(model_path)
     logging.info(f"loading model from {str(model_path)} .")
@@ -215,7 +221,7 @@ def load_model(model, model_path):
 
 
 class AverageMeter(object):
-    '''
+    """
     computes and stores the average and current value
     Example:
         >>> loss = AverageMeter()
@@ -224,7 +230,7 @@ class AverageMeter(object):
         >>>     raw_loss = self.metrics(pred,target)
         >>>     loss.update(raw_loss.item(),n = 1)
         >>> cur_loss = loss.avg
-    '''
+    """
 
     def __init__(self):
         self.reset()
@@ -243,7 +249,7 @@ class AverageMeter(object):
 
 
 def summary(model, *inputs, batch_size=-1, show_input=True):
-    '''
+    """
     打印模型结构信息
     :param model:
     :param inputs:
@@ -255,7 +261,7 @@ def summary(model, *inputs, batch_size=-1, show_input=True):
         >>> for step,batch in enumerate(train_data):
         >>>     summary(self.model,*batch,show_input=True)
         >>>     break
-    '''
+    """
 
     def register_hook(module):
         def hook(module, input, output=None):
