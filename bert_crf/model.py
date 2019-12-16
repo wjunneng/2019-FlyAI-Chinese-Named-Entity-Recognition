@@ -1,10 +1,9 @@
 # -*- coding: utf-8 -*
 import torch
 from flyai.model.base import Base
-import args
-from model_util import load_model, save_model
-from processor import Processor
-from data_loader import create_batch_iter
+from bert_crf.model_util import load_model, save_model
+from bert_crf.processor import Processor
+from bert_crf.data_loader import create_batch_iter
 import numpy as np
 
 __import__('net', fromlist=["Net"])
@@ -52,9 +51,9 @@ class Model(Base):
             batch = tuple(t.to(self.device) for t in batch)
             input_ids, input_mask, segment_ids, label_ids, output_mask = batch
             bert_encode = self.net(input_ids, segment_ids, input_mask).cpu()
-            predicts.extend(self.processor.output_y(self.net.predict(bert_encode, output_mask).numpy())[1:])
+            predicts.extend(self.processor.output_y(self.net.predict(bert_encode, output_mask).numpy()))
 
-        return predicts
+        return predicts[1:]
 
     def predict_all(self, datas):
         if self.net is None:
@@ -69,12 +68,11 @@ class Model(Base):
                 batch = tuple(t.to(self.device) for t in batch)
                 input_ids, input_mask, segment_ids, label_ids, output_mask = batch
                 bert_encode = self.net(input_ids, segment_ids, input_mask).cpu()
-                predicts.extend(self.processor.output_y(self.net.predict(bert_encode, output_mask).numpy())[1:])
+                predicts.extend(self.processor.output_y(self.net.predict(bert_encode, output_mask).numpy()))
 
-            labels.append(predicts)
+            labels.append(predicts[1:])
 
         return labels
 
     def save_model(self, network, path, name=None, overwrite=False):
         save_model(model=network, output_dir=path)
-

@@ -1,9 +1,9 @@
 import torch
 from torch.utils.data import TensorDataset, DataLoader, RandomSampler, SequentialSampler
 import json
-from data_processor import MyPro, convert_examples_to_features
-import args as args
-from Logginger import init_logger
+from bert_crf.data_processor import MyPro, convert_examples_to_features
+import bert_crf.args as args
+from bert_crf.Logginger import init_logger
 
 logger = init_logger("bert_ner", logging_path=args.log_path)
 

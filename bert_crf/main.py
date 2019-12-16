@@ -12,13 +12,12 @@ import torch
 from flyai.dataset import Dataset
 from flyai.utils import remote_helper
 
-from net import FGM
-from Logginger import init_logger
-from data_loader import create_batch_iter
-from optimization import BertAdam
-import args as arguments
-from net import Net
-from model_util import save_model
+from bert_crf.Logginger import init_logger
+from bert_crf.data_loader import create_batch_iter
+from bert_crf.optimization import BertAdam
+import bert_crf.args as arguments
+from bert_crf.net import Net
+from bert_crf.model_util import save_model
 
 logger = init_logger("torch", logging_path=arguments.log_path)
 

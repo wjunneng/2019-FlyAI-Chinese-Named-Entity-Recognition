@@ -1,7 +1,7 @@
 import os
 import torch
-from net import Net
-import args as args
+from bert_crf.net import Net
+import bert_crf.args as args
 
 
 def save_model(model, output_dir):

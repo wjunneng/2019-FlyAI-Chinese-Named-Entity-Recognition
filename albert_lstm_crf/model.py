@@ -51,9 +51,9 @@ class Model(Base):
             batch = tuple(t.to(self.device) for t in batch)
             input_ids, input_mask, segment_ids, label_ids, output_mask = batch
             bert_encode = self.net(input_ids, segment_ids, input_mask).cpu()
-            predicts.extend(self.processor.output_y(self.net.predict(bert_encode, output_mask).numpy())[1:])
+            predicts.extend(self.processor.output_y(self.net.predict(bert_encode, output_mask).numpy()))
 
-        return predicts
+        return predicts[1:]
 
     def predict_all(self, datas):
         if self.net is None:
@@ -68,9 +68,9 @@ class Model(Base):
                 batch = tuple(t.to(self.device) for t in batch)
                 input_ids, input_mask, segment_ids, label_ids, output_mask = batch
                 bert_encode = self.net(input_ids, segment_ids, input_mask).cpu()
-                predicts.extend(self.processor.output_y(self.net.predict(bert_encode, output_mask).numpy())[1:])
+                predicts.extend(self.processor.output_y(self.net.predict(bert_encode, output_mask).numpy()))
 
-            labels.append(predicts)
+            labels.append(predicts[1:])
 
         return labels
 

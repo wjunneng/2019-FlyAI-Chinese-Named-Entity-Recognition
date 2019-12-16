@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*
 from flyai.processor.base import Base
 
-import args
+from bert_crf import args
 
 
 class Processor(Base):

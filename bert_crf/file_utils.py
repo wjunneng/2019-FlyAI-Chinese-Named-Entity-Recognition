@@ -5,7 +5,6 @@ Copyright by the AllenNLP authors.
 """
 from __future__ import (absolute_import, division, print_function, unicode_literals)
 
-import sys
 import json
 import logging
 import os

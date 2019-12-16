@@ -1,6 +1,5 @@
-import numpy as np
-from Logginger import init_logger
-import args as args
+from bert_crf.Logginger import init_logger
+import bert_crf.args as args
 
 logger = init_logger("bert_ner", logging_path=args.log_path)
 

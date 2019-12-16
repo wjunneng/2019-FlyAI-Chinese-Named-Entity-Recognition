@@ -1,11 +1,13 @@
 # -*- coding:utf-8 -*-
+import argparse
 import torch
 import torch.optim as optim
+
 from albert_lstm_crf.data_format import DataFormat
 from albert_lstm_crf.net import Net
 from albert_lstm_crf.utils import f1_score, get_tags, format_result
 from albert_lstm_crf.albert.configs.base import config
-from albert_lstm_crf import args
+from albert_lstm_crf import args as arguments
 from albert_lstm_crf.albert.model.tokenization_bert import BertTokenizer
 
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -14,13 +16,21 @@ DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 class NER(object):
 
     def __init__(self, exec_type="train"):
-        self.embedding_size = args.embedding_size
-        self.hidden_size = args.hidden_size
-        self.batch_size = args.batch_size
-        self.max_legnth = args.max_length
-        self.model_path = args.model_path
-        self.tags = args.tags
-        self.dropout = args.dropout
+        parser = argparse.ArgumentParser()
+        parser.add_argument("-e", "--EPOCHS", default=50, type=int, help="train epochs")
+        parser.add_argument("-b", "--BATCH", default=8, type=int, help="batch size")
+        args = parser.parse_args()
+
+        self.batch_size = args.BATCH
+        self.epochs = args.EPOCHS
+
+        self.learning_rate = arguments.learning_rate
+        self.embedding_size = arguments.embedding_size
+        self.hidden_size = arguments.hidden_size
+        self.max_legnth = arguments.max_length
+        self.model_path = arguments.model_path
+        self.tags = arguments.tags
+        self.dropout = arguments.dropout
         self.__init_model(exec_type)
 
     def __init_model(self, exec_type):
@@ -57,7 +67,7 @@ class NER(object):
         self.model.to(DEVICE)
         # weight decay是放在正则项（regularization）前面的一个系数，正则项一般指示模型的复杂度，
         # 所以weight decay的作用是调节模型复杂度对损失函数的影响，若weight decay很大，则复杂的模型损失函数的值也就大。
-        optimizer = optim.Adam(self.model.parameters(), lr=0.001, weight_decay=0.0005)
+        optimizer = optim.Adam(self.model.parameters(), lr=self.learning_rate, weight_decay=0.0005)
         """
         当网络的评价指标不在提升的时候，可以通过降低网络的学习率来提高网络性能:
         optimer指的是网络的优化器
@@ -72,7 +82,7 @@ class NER(object):
         """
         # schedule = ReduceLROnPlateau(optimizer=optimizer, mode='min',factor=0.1,patience=100,verbose=False)
         total_size = self.train_data.train_dataloader.__len__()
-        for epoch in range(5):
+        for epoch in range(self.epochs):
             index = 0
             for batch in self.train_data.train_dataloader:
                 self.model.train()
