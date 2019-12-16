@@ -32,7 +32,7 @@ import torch
 from torch import nn
 from torch.nn import CrossEntropyLoss
 
-from bert_crf.file_utils import cached_path, WEIGHTS_NAME, CONFIG_NAME
+from file_utils import cached_path, WEIGHTS_NAME, CONFIG_NAME
 
 logger = logging.getLogger(__name__)
 

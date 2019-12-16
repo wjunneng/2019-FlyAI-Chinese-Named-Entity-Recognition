@@ -1,14 +1,17 @@
 # -*- coding:utf-8 -*-
 import argparse
 import torch
+import math
 import torch.optim as optim
 
-from albert_lstm_crf.data_format import DataFormat
 from albert_lstm_crf.net import Net
 from albert_lstm_crf.utils import f1_score, get_tags, format_result
 from albert_lstm_crf.albert.configs.base import config
 from albert_lstm_crf import args as arguments
 from albert_lstm_crf.albert.model.tokenization_bert import BertTokenizer
+from albert_lstm_crf.data_loader import create_batch_iter
+
+from flyai.dataset import Dataset
 
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -28,18 +31,13 @@ class NER(object):
         self.embedding_size = arguments.embedding_size
         self.hidden_size = arguments.hidden_size
         self.max_legnth = arguments.max_length
-        self.model_path = arguments.model_path
         self.tags = arguments.tags
         self.dropout = arguments.dropout
-        self.__init_model(exec_type)
+        self.tag_map = {label: i for i, label in enumerate(arguments.labels)}
 
-    def __init_model(self, exec_type):
         if exec_type == "train":
-            self.train_data = DataFormat(batch_size=self.batch_size, max_length=self.max_legnth, data_type='train')
-            self.dev_data = DataFormat(batch_size=16, max_length=self.max_legnth, data_type="dev")
-
             self.model = Net(
-                tag_map=self.train_data.tag_map,
+                tag_map=self.tag_map,
                 batch_size=self.batch_size,
                 dropout=self.dropout,
                 embedding_dim=self.embedding_size,
@@ -54,6 +52,10 @@ class NER(object):
                 hidden_dim=self.hidden_size
             )
             self.restore_model()
+        else:
+            self.model = None
+
+        self.dataset = Dataset(epochs=self.epochs, batch=self.batch_size)
 
     def restore_model(self):
         try:
@@ -81,33 +83,34 @@ class NER(object):
         eps(float):学习率衰减的最小值，当学习率变化小于 eps 时，则不调整学习率。
         """
         # schedule = ReduceLROnPlateau(optimizer=optimizer, mode='min',factor=0.1,patience=100,verbose=False)
-        total_size = self.train_data.train_dataloader.__len__()
+        total_size = math.ceil(self.dataset.get_train_length() / self.batch_size)
         for epoch in range(self.epochs):
-            index = 0
-            for batch in self.train_data.train_dataloader:
+            for step in range(self.dataset.get_step() // self.epochs):
+                x_train, y_train = self.dataset.next_train_batch()
+                batch = create_batch_iter(mode='dev', X=x_train, y=y_train).dataset.tensors
                 self.model.train()
-                index += 1
                 # 与optimizer.zero_grad()作用一样
                 self.model.zero_grad()
                 batch = tuple(t.to(DEVICE) for t in batch)
+                # all_input_ids, all_input_mask, all_label_ids, all_output_mask
                 b_input_ids, b_input_mask, b_labels, b_out_masks = batch
-
                 bert_encode = self.model(b_input_ids, b_input_mask)
                 loss = self.model.loss_fn(bert_encode=bert_encode, tags=b_labels, output_mask=b_out_masks)
-                progress = ("█" * int(index * 25 / total_size)).ljust(25)
-                print("""epoch [{}] |{}| {}/{}\n\tloss {:.2f}""".format(
-                    epoch, progress, index, total_size, loss.item()))
+                progress = ("█" * int(step * 25 / total_size)).ljust(25)
+                print("step {}".format(step))
+                print("epoch [{}] |{}| {}/{}\n\tloss {:.2f}".format(epoch, progress, step, total_size, loss.item()))
                 loss.backward()
                 # 梯度裁剪
                 # torch.nn.utils.clip_grad_norm_(self.model.parameters(),1) 
                 optimizer.step()
                 # schedule.step(loss)
-                if index % 100 == 0:
-                    self.eval_2()
+                if step % 100 == 0:
+                    self.eval_1()
                     print("-" * 50)
-        torch.save(self.model.state_dict(), self.model_path + 'params.pkl')
 
-    def eva1_1(self):
+        # torch.save(self.model.state_dict(), self.model_path + 'params.pkl')
+
+    def eval_1(self):
         """
         评估所有的单个tag，如下:
         ['O', 'B-ROLE', 'B-LAW', 'B-LOC', 'B-CRIME', 'B-TIME', 'B-ORG', 'B-PER',
@@ -120,7 +123,9 @@ class NER(object):
         y_predicts, y_labels = [], []
         eval_loss, eval_acc, eval_f1 = 0, 0, 0
         with torch.no_grad():
-            for step, batch in enumerate(self.dev_data.train_dataloader):
+            for step in range(self.dataset.get_step() // self.epochs):
+                x_train, y_train = self.dataset.next_validation_batch()
+                batch = create_batch_iter(mode='dev', X=x_train, y=y_train).dataset.tensors
                 batch = tuple(t.to(DEVICE) for t in batch)
                 input_ids, input_mask, label_ids, output_mask = batch
                 bert_encode = self.model(input_ids, input_mask)

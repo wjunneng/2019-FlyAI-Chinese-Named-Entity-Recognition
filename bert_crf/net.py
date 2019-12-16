@@ -5,7 +5,7 @@ import torch.nn as nn
 import numpy as np
 from sklearn.metrics import f1_score, classification_report
 from torch.autograd import Variable
-from bert_crf.modeling import BertPreTrainedModel, BertModel
+from modeling import BertPreTrainedModel, BertModel
 
 
 class Net(BertPreTrainedModel):

@@ -1,10 +1,11 @@
 # -*- coding: utf-8 -*
 import torch
 from flyai.model.base import Base
-from bert_crf.model_util import load_model, save_model
-from bert_crf.processor import Processor
-from bert_crf.data_loader import create_batch_iter
+from model_util import load_model, save_model
+from processor import Processor
+from data_loader import create_batch_iter
 import numpy as np
+from bert_crf import args
 
 __import__('net', fromlist=["Net"])
 
