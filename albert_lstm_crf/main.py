@@ -1,5 +1,4 @@
 # -*- coding:utf-8 -*-
-import yaml
 import torch
 import torch.optim as optim
 from albert_lstm_crf.data_format import DataFormat
