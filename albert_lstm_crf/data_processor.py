@@ -20,10 +20,9 @@ class InputExample(object):
 
 
 class InputFeature(object):
-    def __init__(self, input_ids, input_mask, segment_ids, label_id, output_mask):
+    def __init__(self, input_ids, input_mask, label_id, output_mask):
         self.input_ids = input_ids
         self.input_mask = input_mask
-        self.segment_ids = segment_ids
         self.label_id = label_id
         self.output_mask = output_mask
 
@@ -137,7 +136,6 @@ def convert_examples_to_features(examples, label_list, max_seq_length, tokenizer
         # ----------------处理source--------------
         # 句子首尾加入标示符
         tokens = ["[CLS]"] + tokens_a + ["[SEP]"]
-        segment_ids = [0] * len(tokens)
         # 词转换成数字
         input_ids = convert_tokens_to_ids(tokenizer, tokens)
         input_mask = [1] * len(input_ids)
@@ -145,11 +143,9 @@ def convert_examples_to_features(examples, label_list, max_seq_length, tokenizer
 
         input_ids += padding
         input_mask += padding
-        segment_ids += padding
 
         assert len(input_ids) == max_seq_length
         assert len(input_mask) == max_seq_length
-        assert len(segment_ids) == max_seq_length
 
         # ---------------处理target----------------
         if labels is not None:
@@ -188,7 +184,6 @@ def convert_examples_to_features(examples, label_list, max_seq_length, tokenizer
 
         feature = InputFeature(input_ids=input_ids,
                                input_mask=input_mask,
-                               segment_ids=segment_ids,
                                label_id=label_id,
                                output_mask=output_mask)
         features.append(feature)
