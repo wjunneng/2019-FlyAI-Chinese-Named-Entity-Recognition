@@ -2,7 +2,7 @@ from pathlib import Path
 import os
 
 BASE_DIR = os.path.abspath(os.path.dirname(os.getcwd()))
-BASE_DIR += '/albert'
+BASE_DIR += '/albert_lstm_crf/albert'
 config = {
 
     'data_dir': BASE_DIR + '/dataset/lcqmc',
