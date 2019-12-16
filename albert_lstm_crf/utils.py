@@ -35,16 +35,8 @@ def f1_score(tar_path, pre_path, tag, tag_map):
     """
     :param tar_path:  real tag
     :param pre_path:  predict tag
-    :param tag: [ORG, PER, LOC, T]
-    :param tag_map: { 'B_T': 0,
-                        'I_T': 1,
-                        'B_LOC': 2,
-                        'I_LOC': 3,
-                        'B_ORG': 4,
-                        'I_ORG': 5,
-                        'B_PER': 6,
-                        'I_PER': 7,
-                        'O': 8}
+    :param tag:
+    :param tag_map:
     :return:
     """
     origin = 0.
