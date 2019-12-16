@@ -14,8 +14,8 @@ def format_result(result, text, tag):
 
 
 def get_tags(path, tag, tag_map):
-    begin_tag = tag_map.get("B_" + tag)
-    mid_tag = tag_map.get("I_" + tag)
+    begin_tag = tag_map.get("B-" + tag)
+    mid_tag = tag_map.get("I-" + tag)
     tags = []
 
     for index_1 in range(len(path)):

@@ -86,27 +86,25 @@ class NER(object):
         total_size = math.ceil(self.dataset.get_train_length() / self.batch_size)
         for epoch in range(self.epochs):
             for step in range(self.dataset.get_step() // self.epochs):
-                x_train, y_train = self.dataset.next_train_batch()
-                batch = create_batch_iter(mode='dev', X=x_train, y=y_train).dataset.tensors
                 self.model.train()
                 # 与optimizer.zero_grad()作用一样
                 self.model.zero_grad()
-                batch = tuple(t.to(DEVICE) for t in batch)
-                # all_input_ids, all_input_mask, all_label_ids, all_output_mask
+                x_train, y_train = self.dataset.next_train_batch()
+                batch = tuple(t.to(DEVICE) for t in create_batch_iter(mode='train', X=x_train, y=y_train).dataset.tensors)
                 b_input_ids, b_input_mask, b_labels, b_out_masks = batch
                 bert_encode = self.model(b_input_ids, b_input_mask)
                 loss = self.model.loss_fn(bert_encode=bert_encode, tags=b_labels, output_mask=b_out_masks)
-                progress = ("█" * int(step * 25 / total_size)).ljust(25)
-                print("step {}".format(step))
-                print("epoch [{}] |{}| {}/{}\n\tloss {:.2f}".format(epoch, progress, step, total_size, loss.item()))
                 loss.backward()
                 # 梯度裁剪
                 # torch.nn.utils.clip_grad_norm_(self.model.parameters(),1) 
                 optimizer.step()
                 # schedule.step(loss)
                 if step % 100 == 0:
-                    self.eval_1()
+                    self.eval_2()
                     print("-" * 50)
+                progress = ("█" * int(step * 25 / total_size)).ljust(25)
+                print("step {}".format(step))
+                print("epoch [{}] |{}| {}/{}\n\tloss {:.2f}".format(epoch, progress, step, total_size, loss.item()))
 
         # torch.save(self.model.state_dict(), self.model_path + 'params.pkl')
 
@@ -124,8 +122,8 @@ class NER(object):
         eval_loss, eval_acc, eval_f1 = 0, 0, 0
         with torch.no_grad():
             for step in range(self.dataset.get_step() // self.epochs):
-                x_train, y_train = self.dataset.next_validation_batch()
-                batch = create_batch_iter(mode='dev', X=x_train, y=y_train).dataset.tensors
+                x_val, y_val = self.dataset.next_validation_batch()
+                batch = create_batch_iter(mode='dev', X=x_val, y=y_val).dataset.tensors
                 batch = tuple(t.to(DEVICE) for t in batch)
                 input_ids, input_mask, label_ids, output_mask = batch
                 bert_encode = self.model(input_ids, input_mask)
@@ -151,7 +149,9 @@ class NER(object):
         """
         self.model.eval()
         with torch.no_grad():
-            for step, batch in enumerate(self.dev_data.train_dataloader):
+            for step in range(self.dataset.get_step() // self.epochs):
+                x_val, y_val = self.dataset.next_validation_batch()
+                batch = create_batch_iter(mode='dev', X=x_val, y=y_val).dataset.tensors
                 batch = tuple(t.to(DEVICE) for t in batch)
                 input_ids, input_mask, label_ids, output_mask = batch
                 bert_encode = self.model(input_ids, input_mask)

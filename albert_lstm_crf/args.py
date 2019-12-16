@@ -14,7 +14,7 @@ task_name = "albert_lstm_crf_ner"
 unknown_token = "[UNK]"
 
 max_seq_length = 128
-use_calculate_max_seq_length = True
+use_calculate_max_seq_length = False
 
 tags = ['ROLE', 'LAW', 'LOC', 'CRIME', 'TIME', 'ORG', 'PER']
 token_words = ["[UNK]", "[SEP]", "[PAD]", "[CLS]", "[MASK]"]

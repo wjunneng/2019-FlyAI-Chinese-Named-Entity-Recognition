@@ -104,7 +104,7 @@ def main():
         network.train()
         for step in range(dataset.get_step() // args.EPOCHS):
             x_train, y_train = dataset.next_train_batch()
-            batch = create_batch_iter(mode='dev', X=x_train, y=y_train).dataset.tensors
+            batch = create_batch_iter(mode='train', X=x_train, y=y_train).dataset.tensors
             batch = tuple(t.to(device) for t in batch)
             input_ids, input_mask, segment_ids, label_ids, output_mask = batch
             bert_encode = network(input_ids, segment_ids, input_mask)
