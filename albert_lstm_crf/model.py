@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*
 import torch
 from flyai.model.base import Base
-from albert_lstm_crf import args
-from albert_lstm_crf.model_util import load_model, save_model
-from albert_lstm_crf.processor import Processor
+import args
+from model_util import load_model, save_model
+from processor import Processor
 import numpy as np
 
 __import__('net', fromlist=["Net"])

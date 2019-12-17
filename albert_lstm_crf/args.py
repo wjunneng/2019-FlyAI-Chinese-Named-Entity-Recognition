@@ -13,7 +13,7 @@ learning_rate = 1e-4
 task_name = "albert_lstm_crf_ner"
 unknown_token = "[UNK]"
 
-max_seq_length = 128
+max_seq_length = 36
 use_calculate_max_seq_length = False
 
 tags = ['ROLE', 'LAW', 'LOC', 'CRIME', 'TIME', 'ORG', 'PER']

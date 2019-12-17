@@ -1,7 +1,7 @@
 import os
 import torch
-from albert_lstm_crf.net import Net
-import albert_lstm_crf.args as args
+from net import Net
+import args as args
 
 
 def save_model(model, output_dir):

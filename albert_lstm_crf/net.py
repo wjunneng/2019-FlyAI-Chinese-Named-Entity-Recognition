@@ -4,9 +4,9 @@ import numpy as np
 import torch
 from torch import nn
 
-from albert_lstm_crf.albert.model.modeling_albert import BertConfig, BertModel
-from albert_lstm_crf.albert.configs.base import config
-from albert_lstm_crf import args
+from albert.model.modeling_albert import BertConfig, BertModel
+from albert.configs.base import config
+import args
 from sklearn.metrics import f1_score, classification_report
 
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -24,7 +24,7 @@ class Net(nn.Module):
 
     def __init__(
             self,
-            tag_map={label: i for (i, label) in enumerate(args.labels)},
+            tag_map={label: i for i, label in enumerate(args.labels)},
             batch_size=20,
             hidden_dim=128,
             dropout=1.0,
@@ -72,6 +72,7 @@ class Net(nn.Module):
     def loss_fn(self, bert_encode, output_mask, tags):
         # bert_encode是bert的输出
         loss = self.crf.negative_log_loss(bert_encode, output_mask, tags)
+
         return loss
 
     def predict(self, bert_encode, output_mask):

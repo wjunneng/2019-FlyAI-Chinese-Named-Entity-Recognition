@@ -56,14 +56,20 @@ class DataProcessor(object):
 
 
 class MyPro(DataProcessor):
-    """将数据构造成example格式"""
+    """
+    将数据构造成example格式
+    """
 
     def _create_example(self, lines, set_type):
         examples = []
         for i, line in enumerate(lines):
             guid = "%s-%d" % (set_type, i)
-            text_a = [args.unknown_token] + line["source"].tolist()
-            label = 'O ' + ' '.join(line["target"].tolist())
+            # 数据首增加一个字符
+            # text_a = [args.unknown_token] + line["source"].tolist()
+            # label = 'O ' + ' '.join(line["target"].tolist())
+            # 不增加一个字符
+            text_a = line["source"].tolist()
+            label = ' '.join(line["target"].tolist())
             example = InputExample(guid=guid, text_a=text_a, label=label)
             examples.append(example)
         return examples
@@ -93,7 +99,10 @@ class MyPro(DataProcessor):
         examples = []
         for i, line in enumerate(X):
             guid = "predict-%d" % i
-            text_a = [args.unknown_token] + line.tolist()
+            # 增加一个字符
+            # text_a = [args.unknown_token] + line.tolist()
+            # 不增加一个字符
+            text_a = line.tolist()
             label = None
             example = InputExample(guid=guid, text_a=text_a, label=label)
             examples.append(example)
@@ -114,9 +123,9 @@ def convert_tokens_to_ids(tokenizer, tokens):
     return result
 
 
-def convert_examples_to_features(examples, label_list, max_seq_length, tokenizer):
+def convert_examples_to_features(examples, max_seq_length, tokenizer):
     # 标签转换为数字
-    label_map = {label: i for i, label in enumerate(label_list)}
+    label_map = {label: i for i, label in enumerate(args.labels)}
 
     features = []
     labels = None
@@ -182,10 +191,7 @@ def convert_examples_to_features(examples, label_list, max_seq_length, tokenizer
         #     logger.info("output_mask: %s " % " ".join([str(x) for x in output_mask]))
         # ----------------------------------------------------
 
-        feature = InputFeature(input_ids=input_ids,
-                               input_mask=input_mask,
-                               label_id=label_id,
-                               output_mask=output_mask)
+        feature = InputFeature(input_ids=input_ids, input_mask=input_mask, label_id=label_id, output_mask=output_mask)
         features.append(feature)
 
     return features

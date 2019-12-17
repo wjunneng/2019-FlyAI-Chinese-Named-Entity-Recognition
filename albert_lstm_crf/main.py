@@ -4,12 +4,12 @@ import torch
 import math
 import torch.optim as optim
 
-from albert_lstm_crf.net import Net
-from albert_lstm_crf.utils import f1_score, get_tags, format_result
-from albert_lstm_crf.albert.configs.base import config
+from net import Net
+from utils import f1_score, get_tags, format_result
+from albert.configs.base import config
 from albert_lstm_crf import args as arguments
-from albert_lstm_crf.albert.model.tokenization_bert import BertTokenizer
-from albert_lstm_crf.data_loader import create_batch_iter
+from albert.model.tokenization_bert import BertTokenizer
+from data_loader import create_batch_iter
 
 from flyai.dataset import Dataset
 
@@ -21,7 +21,7 @@ class NER(object):
     def __init__(self, exec_type="train"):
         parser = argparse.ArgumentParser()
         parser.add_argument("-e", "--EPOCHS", default=50, type=int, help="train epochs")
-        parser.add_argument("-b", "--BATCH", default=8, type=int, help="batch size")
+        parser.add_argument("-b", "--BATCH", default=2, type=int, help="batch size")
         args = parser.parse_args()
 
         self.batch_size = args.BATCH
