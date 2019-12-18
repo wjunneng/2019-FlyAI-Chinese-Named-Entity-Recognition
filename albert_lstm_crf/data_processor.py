@@ -1,5 +1,6 @@
 from Logginger import init_logger
 import args as args
+import numpy as np
 
 logger = init_logger("bert_ner", logging_path=args.log_path)
 
@@ -50,6 +51,13 @@ class DataProcessor(object):
     def _read_data(cls, X, y):
         lines = []
         for source, target in zip(X, y):
+            sources = []
+            targets = []
+            for (s, t) in zip(source, target):
+                sources.extend(s)
+                targets.extend([t] * len(s))
+            source = np.array(sources)
+            target = np.array(targets)
             lines.append({"source": source, "target": target})
 
         return lines
@@ -68,7 +76,7 @@ class MyPro(DataProcessor):
             # text_a = [args.unknown_token] + line["source"].tolist()
             # label = 'O ' + ' '.join(line["target"].tolist())
             # 不增加一个字符
-            text_a = line["source"].tolist()
+            text_a = ' '.join(line["source"].tolist())
             label = ' '.join(line["target"].tolist())
             example = InputExample(guid=guid, text_a=text_a, label=label)
             examples.append(example)
@@ -102,7 +110,7 @@ class MyPro(DataProcessor):
             # 增加一个字符
             # text_a = [args.unknown_token] + line.tolist()
             # 不增加一个字符
-            text_a = line.tolist()
+            text_a = ' '.join(line.tolist())
             label = None
             example = InputExample(guid=guid, text_a=text_a, label=label)
             examples.append(example)
@@ -112,17 +120,6 @@ class MyPro(DataProcessor):
         return args.labels
 
 
-def convert_tokens_to_ids(tokenizer, tokens):
-    result = []
-    for token in tokens:
-        if token in tokenizer:
-            result.append(tokenizer.index(token))
-        else:
-            result.append(tokenizer.index(args.unknown_token))
-
-    return result
-
-
 def convert_examples_to_features(examples, max_seq_length, tokenizer):
     # 标签转换为数字
     label_map = {label: i for i, label in enumerate(args.labels)}
@@ -130,7 +127,7 @@ def convert_examples_to_features(examples, max_seq_length, tokenizer):
     features = []
     labels = None
     for ex_index, example in enumerate(examples):
-        tokens_a = example.text_a
+        tokens_a = tokenizer.tokenize(example.text_a)
         if example.label is not None:
             labels = example.label.split()
 
@@ -146,7 +143,7 @@ def convert_examples_to_features(examples, max_seq_length, tokenizer):
         # 句子首尾加入标示符
         tokens = ["[CLS]"] + tokens_a + ["[SEP]"]
         # 词转换成数字
-        input_ids = convert_tokens_to_ids(tokenizer, tokens)
+        input_ids = tokenizer.convert_tokens_to_ids(tokens)
         input_mask = [1] * len(input_ids)
         padding = [0] * (max_seq_length - len(input_ids))
 

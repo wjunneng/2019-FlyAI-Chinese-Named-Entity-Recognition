@@ -4,6 +4,8 @@ import json
 from data_processor import MyPro, convert_examples_to_features
 import args as args
 from Logginger import init_logger
+from albert.configs.base import config
+from albert.model.tokenization_bert import BertTokenizer
 
 logger = init_logger("bert_ner", logging_path=args.log_path)
 
@@ -15,9 +17,13 @@ def init_params():
         raise ValueError("Task not found: %s" % task_name)
     processor = processors[task_name]()
 
-    with open(args.WORDS_FILE, 'r') as file:
-        tokenizer = args.token_words
-        tokenizer.extend(list(json.load(file).keys()))
+    # with open(args.WORDS_FILE, 'r') as file:
+    #     tokenizer = args.token_words
+    #     tokenizer.extend(list(json.load(file).keys()))
+
+    # your path for model and vocab
+    VOCAB = config['albert_vocab_path']
+    tokenizer = BertTokenizer.from_pretrained(VOCAB)
 
     return processor, tokenizer
 

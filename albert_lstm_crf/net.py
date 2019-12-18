@@ -35,8 +35,8 @@ class Net(nn.Module):
         self.hidden_dim = hidden_dim
         self.embedding_dim = embedding_dim
         self.dropout = dropout
-
-        self.tag_size = len(tag_map)  # 标签个数
+        # 标签个数
+        self.tag_size = len(tag_map)
         self.tag_map = tag_map
 
         bert_config = BertConfig.from_pretrained(str(config['albert_config_path']), share_type='all')
@@ -78,8 +78,8 @@ class Net(nn.Module):
     def predict(self, bert_encode, output_mask):
         predicts = self.crf.get_batch_best_path(bert_encode, output_mask)
         # 以下是用于主程序中的评估eval_1(); acc_f1,class_report的评估
-        # predicts = predicts.view(1, -1).squeeze()
-        # predicts = predicts[predicts != -1]
+        predicts = predicts.view(1, -1).squeeze()
+        predicts = predicts[predicts != -1]
 
         return predicts
 

@@ -6,9 +6,8 @@ import torch.optim as optim
 
 from net import Net
 from utils import f1_score, get_tags, format_result
-from albert.configs.base import config
 from albert_lstm_crf import args as arguments
-from albert.model.tokenization_bert import BertTokenizer
+from model_util import save_model
 from data_loader import create_batch_iter
 
 from flyai.dataset import Dataset
@@ -20,8 +19,8 @@ class NER(object):
 
     def __init__(self, exec_type="train"):
         parser = argparse.ArgumentParser()
-        parser.add_argument("-e", "--EPOCHS", default=50, type=int, help="train epochs")
-        parser.add_argument("-b", "--BATCH", default=2, type=int, help="batch size")
+        parser.add_argument("-e", "--EPOCHS", default=10, type=int, help="train epochs")
+        parser.add_argument("-b", "--BATCH", default=8, type=int, help="batch size")
         args = parser.parse_args()
 
         self.batch_size = args.BATCH
@@ -30,7 +29,6 @@ class NER(object):
         self.learning_rate = arguments.learning_rate
         self.embedding_size = arguments.embedding_size
         self.hidden_size = arguments.hidden_size
-        self.max_legnth = arguments.max_length
         self.tags = arguments.tags
         self.dropout = arguments.dropout
         self.tag_map = {label: i for i, label in enumerate(arguments.labels)}
@@ -90,7 +88,9 @@ class NER(object):
                 # 与optimizer.zero_grad()作用一样
                 self.model.zero_grad()
                 x_train, y_train = self.dataset.next_train_batch()
-                batch = tuple(t.to(DEVICE) for t in create_batch_iter(mode='train', X=x_train, y=y_train).dataset.tensors)
+                x_val, y_val = self.dataset.next_validation_batch()
+                batch = tuple(
+                    t.to(DEVICE) for t in create_batch_iter(mode='train', X=x_train, y=y_train).dataset.tensors)
                 b_input_ids, b_input_mask, b_labels, b_out_masks = batch
                 bert_encode = self.model(b_input_ids, b_input_mask)
                 loss = self.model.loss_fn(bert_encode=bert_encode, tags=b_labels, output_mask=b_out_masks)
@@ -99,66 +99,55 @@ class NER(object):
                 # torch.nn.utils.clip_grad_norm_(self.model.parameters(),1) 
                 optimizer.step()
                 # schedule.step(loss)
-                if step % 100 == 0:
-                    self.eval_2()
+                if step % 50 == 0:
+                    self.eval_1(x_val, y_val)
                     print("-" * 50)
-                progress = ("█" * int(step * 25 / total_size)).ljust(25)
-                print("step {}".format(step))
-                print("epoch [{}] |{}| {}/{}\n\tloss {:.2f}".format(epoch, progress, step, total_size, loss.item()))
+                    progress = ("█" * int(step * 25 / total_size)).ljust(25)
+                    print("step {}".format(step))
+                    print("epoch [{}] |{}| {}/{}\n\tloss {:.2f}".format(epoch, progress, step, total_size, loss.item()))
 
-        # torch.save(self.model.state_dict(), self.model_path + 'params.pkl')
+        save_model(self.model, arguments.output_dir)
 
-    def eval_1(self):
+    def eval_1(self, x_val, y_val):
         """
-        评估所有的单个tag，如下:
-        ['O', 'B-ROLE', 'B-LAW', 'B-LOC', 'B-CRIME', 'B-TIME', 'B-ORG', 'B-PER',
-          'I-ROLE', 'I-LAW', 'I-LOC', 'I-CRIME', 'I-TIME', 'I-ORG', 'I-PER']
+        评估所有的单个tag，如下
         Returns:
 
         """
         self.model.eval()
-        count = 0
-        y_predicts, y_labels = [], []
         eval_loss, eval_acc, eval_f1 = 0, 0, 0
         with torch.no_grad():
-            for step in range(self.dataset.get_step() // self.epochs):
-                x_val, y_val = self.dataset.next_validation_batch()
-                batch = create_batch_iter(mode='dev', X=x_val, y=y_val).dataset.tensors
-                batch = tuple(t.to(DEVICE) for t in batch)
-                input_ids, input_mask, label_ids, output_mask = batch
-                bert_encode = self.model(input_ids, input_mask)
-                eval_los = self.model.loss_fn(bert_encode=bert_encode, tags=label_ids, output_mask=output_mask)
-                eval_loss = eval_los + eval_loss
-                count += 1
-                predicts = self.model.predict(bert_encode, output_mask)
-                y_predicts.append(predicts)
+            batch = tuple(
+                t.to(DEVICE) for t in create_batch_iter(mode='dev', X=x_val, y=y_val).dataset.tensors)
+            batch = tuple(t.to(DEVICE) for t in batch)
+            input_ids, input_mask, label_ids, output_mask = batch
+            bert_encode = self.model(input_ids, input_mask)
+            eval_los = self.model.loss_fn(bert_encode=bert_encode, tags=label_ids, output_mask=output_mask)
+            eval_loss = eval_los + eval_loss
+            predicts = self.model.predict(bert_encode, output_mask)
 
-                label_ids = label_ids.view(1, -1)
-                label_ids = label_ids[label_ids != -1]
-                y_labels.append(label_ids)
+            label_ids = label_ids.view(1, -1)
+            label_ids = label_ids[label_ids != -1]
 
-            eval_predicted = torch.cat(y_predicts, dim=0)
-            eval_labeled = torch.cat(y_labels, dim=0)
-            self.model.acc_f1(eval_predicted, eval_labeled)
-            self.model.class_report(eval_predicted, eval_labeled)
+            self.model.acc_f1(predicts, label_ids)
+            self.model.class_report(predicts, label_ids)
+            print('eval_loss: ', eval_loss)
 
-    def eval_2(self):
+    def eval_2(self, x_val, y_val):
         """
         只评估:['ROLE', 'LAW', 'LOC', 'CRIME', 'TIME', 'ORG', 'PER']
         :return:
         """
         self.model.eval()
         with torch.no_grad():
-            for step in range(self.dataset.get_step() // self.epochs):
-                x_val, y_val = self.dataset.next_validation_batch()
-                batch = create_batch_iter(mode='dev', X=x_val, y=y_val).dataset.tensors
-                batch = tuple(t.to(DEVICE) for t in batch)
-                input_ids, input_mask, label_ids, output_mask = batch
-                bert_encode = self.model(input_ids, input_mask)
-                predicts = self.model.predict(bert_encode, output_mask)
-                print("\teval")
-                for tag in self.tags:
-                    f1_score(label_ids, predicts, tag, self.model.tag_map)
+            batch = create_batch_iter(mode='dev', X=x_val, y=y_val).dataset.tensors
+            batch = tuple(t.to(DEVICE) for t in batch)
+            input_ids, input_mask, label_ids, output_mask = batch
+            bert_encode = self.model(input_ids, input_mask)
+            predicts = self.model.predict(bert_encode, output_mask)
+            print("\teval")
+            for tag in self.tags:
+                f1_score(label_ids, predicts, tag, self.model.tag_map)
 
     """
     注意：
@@ -170,50 +159,7 @@ class NER(object):
             使用torch.no_grad()这个上下文管理器就可以了。
     """
 
-    def predict(self, input_str=""):
-        # 取消batchnorm和dropout,用于评估阶段
-        self.model.eval()
-        self.model.to(DEVICE)
-        # your path for model and vocab
-        VOCAB = config['albert_vocab_path']
-        tokenizer = BertTokenizer.from_pretrained(VOCAB)
-        while True:
-            with torch.no_grad():
-                input_str = input("请输入文本: ")
-                # add_spicial_tokens=True，为自动为sentence加上[CLS]和[SEP]
-                input_ids = tokenizer.encode(input_str, add_special_tokens=True)
-                input_mask = [1] * len(input_ids)
-                # 用于屏蔽特殊token
-                output_mask = [0] + [1] * (len(input_ids) - 2) + [0]
-
-                input_ids_tensor = torch.LongTensor(input_ids).reshape(1, -1)
-                input_mask_tensor = torch.LongTensor(input_mask).reshape(1, -1)
-                output_mask_tensor = torch.LongTensor(output_mask).reshape(1, -1)
-                input_ids_tensor = input_ids_tensor.to(DEVICE)
-                input_mask_tensor = input_mask_tensor.to(DEVICE)
-                output_mask_tensor = output_mask_tensor.to(DEVICE)
-
-                bert_encode = self.model(input_ids_tensor, input_mask_tensor)
-                predicts = self.model.predict(bert_encode, output_mask_tensor)
-
-                print('paths:{}'.format(predicts))
-                entities = []
-                for tag in self.tags:
-                    tags = get_tags(predicts[0], tag, self.model.tag_map)
-                    entities += format_result(tags, input_str, tag)
-                print(entities)
-
 
 if __name__ == "__main__":
-    # if sys.argv[1] == "train":
-    #     ner = NER("train")
-    #     ner.train()
-    # elif sys.argv[1] == "predict":
-    #     ner = NER("predict")
-    #     print(ner.predict())
-
     ner = NER("train")
     ner.train()
-
-    ner = NER("predict")
-    print(ner.predict())

@@ -4,6 +4,7 @@ from flyai.model.base import Base
 import args
 from model_util import load_model, save_model
 from processor import Processor
+from data_loader import create_batch_iter
 import numpy as np
 
 __import__('net', fromlist=["Net"])
@@ -49,11 +50,11 @@ class Model(Base):
         for x_data in x_datas:
             batch = create_batch_iter(mode='predict', X=np.array([x_data]), y=None).dataset.tensors
             batch = tuple(t.to(self.device) for t in batch)
-            input_ids, input_mask, segment_ids, label_ids, output_mask = batch
-            bert_encode = self.net(input_ids, segment_ids, input_mask).cpu()
+            input_ids, input_mask, label_ids, output_mask = batch
+            bert_encode = self.net(input_ids, input_mask)
             predicts.extend(self.processor.output_y(self.net.predict(bert_encode, output_mask).numpy()))
 
-        return predicts[1:]
+        return predicts
 
     def predict_all(self, datas):
         if self.net is None:
@@ -66,11 +67,11 @@ class Model(Base):
             for x_data in x_datas:
                 batch = create_batch_iter(mode='predict', X=np.array([x_data]), y=None).dataset.tensors
                 batch = tuple(t.to(self.device) for t in batch)
-                input_ids, input_mask, segment_ids, label_ids, output_mask = batch
-                bert_encode = self.net(input_ids, segment_ids, input_mask).cpu()
+                input_ids, input_mask, label_ids, output_mask = batch
+                bert_encode = self.net(input_ids, input_mask)
                 predicts.extend(self.processor.output_y(self.net.predict(bert_encode, output_mask).numpy()))
 
-            labels.append(predicts[1:])
+            labels.append(predicts)
 
         return labels
 
