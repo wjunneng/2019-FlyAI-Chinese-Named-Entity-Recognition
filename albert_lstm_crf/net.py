@@ -24,11 +24,11 @@ class Net(nn.Module):
 
     def __init__(
             self,
+            batch_size,
+            hidden_dim,
+            dropout,
+            embedding_dim,
             tag_map={label: i for i, label in enumerate(args.labels)},
-            batch_size=20,
-            hidden_dim=128,
-            dropout=1.0,
-            embedding_dim=100
     ):
         super(Net, self).__init__()
         self.batch_size = batch_size

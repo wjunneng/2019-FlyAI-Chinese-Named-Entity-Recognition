@@ -9,10 +9,13 @@ from utils import f1_score, get_tags, format_result
 from albert_lstm_crf import args as arguments
 from model_util import save_model
 from data_loader import create_batch_iter
+# 必须使用该方法下载模型，然后加载
+from flyai.utils import remote_helper
 
 from flyai.dataset import Dataset
 
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+# remote_helper.get_remote_date('https://www.flyai.com/m/albert_base_v2.zip')
 
 
 class NER(object):

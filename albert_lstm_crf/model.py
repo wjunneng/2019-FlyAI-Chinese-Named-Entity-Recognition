@@ -6,6 +6,7 @@ from model_util import load_model, save_model
 from processor import Processor
 from data_loader import create_batch_iter
 import numpy as np
+from collections import Counter
 
 __import__('net', fromlist=["Net"])
 
@@ -52,8 +53,12 @@ class Model(Base):
             batch = tuple(t.to(self.device) for t in batch)
             input_ids, input_mask, label_ids, output_mask = batch
             bert_encode = self.net(input_ids, input_mask)
-            predicts.extend(self.processor.output_y(self.net.predict(bert_encode, output_mask).numpy()))
-
+            predict = self.processor.output_y(self.net.predict(bert_encode, output_mask).numpy())
+            start = 0
+            for index in range(len(x_data)):
+                end = start + len(x_data[index])
+                predicts.append(Counter(predict[start:end]).most_common()[0][0])
+                start = end
         return predicts
 
     def predict_all(self, datas):
@@ -69,7 +74,12 @@ class Model(Base):
                 batch = tuple(t.to(self.device) for t in batch)
                 input_ids, input_mask, label_ids, output_mask = batch
                 bert_encode = self.net(input_ids, input_mask)
-                predicts.extend(self.processor.output_y(self.net.predict(bert_encode, output_mask).numpy()))
+                predict = self.processor.output_y(self.net.predict(bert_encode, output_mask).numpy())
+                start = 0
+                for index in range(len(x_data)):
+                    end = start + len(x_data[index])
+                    predicts.append(Counter(predict[start:end]).most_common()[0][0])
+                    start = end
 
             labels.append(predicts)
 
@@ -77,4 +87,3 @@ class Model(Base):
 
     def save_model(self, network, path, name=None, overwrite=False):
         save_model(model=network, output_dir=path)
-
