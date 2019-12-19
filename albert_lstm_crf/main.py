@@ -6,7 +6,7 @@ import torch.optim as optim
 
 from net import Net
 from utils import f1_score, get_tags, format_result, convert_tf_checkpoint_to_pytorch
-from albert_lstm_crf import args as arguments
+import args as arguments
 from model_util import save_model
 from data_loader import create_batch_iter
 
@@ -19,9 +19,9 @@ DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 remote_helper.get_remote_date('https://www.flyai.com/m/albert_large_zh.zip')
 convert_tf_checkpoint_to_pytorch(
-    tf_checkpoint_path="/home/wjunneng/Ubuntu/2019-FlyAI-Chinese-Named-Entity-Recognition/albert_lstm_crf/data/input/model",
-    bert_config_file="/home/wjunneng/Ubuntu/2019-FlyAI-Chinese-Named-Entity-Recognition/albert_lstm_crf/data/input/model/albert_config_large.json",
-    pytorch_dump_path="/home/wjunneng/Ubuntu/2019-FlyAI-Chinese-Named-Entity-Recognition/albert_lstm_crf/data/input/model/pytorch_model.bin",
+    tf_checkpoint_path="./data/input/model",
+    bert_config_file="./data/input/model/albert_config_large.json",
+    pytorch_dump_path="./data/input/model/pytorch_model.bin",
     share_type="all")
 
 

@@ -1,9 +1,11 @@
 # -----------ARGS---------------------
 WORDS_FILE = "./data/input/words.dict"
+VOCAB_FILE = './data/input/model/vocab.txt'
 data_dir = "./data/"  # 原始数据文件夹，应包括tsv文件
 output_dir = "./checkpoint"  # checkpoint和预测输出文件夹
 bert_model = "./data/input/model"  # BERT 预训练模型种类 bert-base-chinese
 log_path = "./log"  # 日志文件
+
 
 embedding_size = 1024
 hidden_size = 128

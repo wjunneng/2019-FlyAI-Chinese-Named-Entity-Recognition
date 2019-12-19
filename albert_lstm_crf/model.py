@@ -54,9 +54,14 @@ class Model(Base):
             input_ids, input_mask, label_ids, output_mask = batch
             bert_encode = self.net(input_ids, input_mask)
             predict = self.processor.output_y(self.net.predict(bert_encode, output_mask).numpy())
+            print('x_data')
+            print(x_data)
+            print(predict)
             start = 0
             for index in range(len(x_data)):
+                print(x_data[index])
                 end = start + len(x_data[index])
+                print(predict[start:end])
                 predicts.append(Counter(predict[start:end]).most_common()[0][0])
                 start = end
         return predicts
@@ -66,20 +71,9 @@ class Model(Base):
             self.net = torch.load(self.bert_model)
         labels = []
         for data in datas:
-            x_data = self.data.predict_data(**data)
-            x_datas = Model._split_x_data(x_data, args.max_seq_length)
-            predicts = []
-            for x_data in x_datas:
-                batch = create_batch_iter(mode='predict', X=np.array([x_data]), y=None).dataset.tensors
-                batch = tuple(t.to(self.device) for t in batch)
-                input_ids, input_mask, label_ids, output_mask = batch
-                bert_encode = self.net(input_ids, input_mask)
-                predict = self.processor.output_y(self.net.predict(bert_encode, output_mask).numpy())
-                start = 0
-                for index in range(len(x_data)):
-                    end = start + len(x_data[index])
-                    predicts.append(Counter(predict[start:end]).most_common()[0][0])
-                    start = end
+            print('source:')
+            print(data['source'])
+            predicts = self.predict(source=data['source'])
 
             labels.append(predicts)
 

@@ -124,6 +124,14 @@ def convert_examples_to_features(examples, max_seq_length, tokenizer):
     # 标签转换为数字
     label_map = {label: i for i, label in enumerate(args.labels)}
 
+    # load sub_vocab
+    sub_vocab = {}
+    with open(args.VOCAB_FILE, 'r') as fr:
+        for line in fr:
+            _line = line.strip('\n')
+            if "##" in _line and sub_vocab.get(_line) is None:
+                sub_vocab[_line] = 1
+
     features = []
     labels = None
     for ex_index, example in enumerate(examples):
@@ -164,7 +172,8 @@ def convert_examples_to_features(examples, max_seq_length, tokenizer):
 
         # output_mask用来过滤bert输出中sub_word的输出,只保留单词的第一个输出(As recommended by jocob in his paper)
         # 此外，也是为了适应crf
-        output_mask = [0] + len(tokens_a) * [1] + [0]
+        output_mask = [0 if sub_vocab.get(t) is not None else 1 for t in tokens_a]
+        output_mask = [0] + output_mask + [0]
         output_mask += padding
 
         # ----------------处理后结果-------------------------
@@ -177,15 +186,15 @@ def convert_examples_to_features(examples, max_seq_length, tokenizer):
         # output_mask:     0 1  1  1  1  1   0     0   0 0 0
         # --------------看结果是否合理------------------------
 
-        # if ex_index < 1:
-        #     logger.info("-----------------Example-----------------")
-        #     logger.info("guid: %s" % (example.guid))
-        #     logger.info("text_a: %s" % example.text_a)
-        #     logger.info("tokens: %s" % " ".join([str(x) for x in tokens]))
-        #     logger.info("input_ids: %s" % " ".join([str(x) for x in input_ids]))
-        #     logger.info("input_mask: %s" % " ".join([str(x) for x in input_mask]))
-        #     logger.info("label: %s " % " ".join([str(x) for x in label_id]))
-        #     logger.info("output_mask: %s " % " ".join([str(x) for x in output_mask]))
+        if ex_index < 1:
+            logger.info("-----------------Example-----------------")
+            logger.info("guid: %s" % (example.guid))
+            logger.info("text_a: %s" % example.text_a)
+            logger.info("tokens: %s" % " ".join([str(x) for x in tokens]))
+            logger.info("input_ids: %s" % " ".join([str(x) for x in input_ids]))
+            logger.info("input_mask: %s" % " ".join([str(x) for x in input_mask]))
+            logger.info("label: %s " % " ".join([str(x) for x in label_id]))
+            logger.info("output_mask: %s " % " ".join([str(x) for x in output_mask]))
         # ----------------------------------------------------
 
         feature = InputFeature(input_ids=input_ids, input_mask=input_mask, label_id=label_id, output_mask=output_mask)
