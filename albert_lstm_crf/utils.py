@@ -1,4 +1,7 @@
 # -*- coding:utf-8 -*-
+from albert.model.modeling_albert import BertConfig, BertForPreTraining, load_tf_weights_in_albert
+import torch
+
 
 def format_result(result, text, tag):
     entities = []
@@ -59,3 +62,18 @@ def f1_score(tar_path, pre_path, tag, tag_map):
     f1 = 0. if recall + precision == 0 else (2 * precision * recall) / (precision + recall)
     print("\t{}\trecall {:.2f}\tprecision {:.2f}\tf1 {:.2f}".format(tag, recall, precision, f1))
     return recall, precision, f1
+
+
+def convert_tf_checkpoint_to_pytorch(tf_checkpoint_path, bert_config_file, share_type, pytorch_dump_path):
+    # Initialise PyTorch model
+    config = BertConfig.from_pretrained(bert_config_file, share_type=share_type)
+
+    # print("Building PyTorch model from configuration: {}".format(str(config)))
+    model = BertForPreTraining(config)
+
+    # Load weights from tf checkpoint
+    load_tf_weights_in_albert(model, config, tf_checkpoint_path)
+
+    # Save pytorch-model
+    print("Save PyTorch model to {}".format(pytorch_dump_path))
+    torch.save(model.state_dict(), pytorch_dump_path)

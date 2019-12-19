@@ -11,9 +11,10 @@ config = {
     'checkpoint_dir': BASE_DIR + "/outputs/checkpoints",
     'result_dir': BASE_DIR + "/outputs/result",
 
-    'bert_dir': '../albert_lstm_crf/data/input/model/albert_base_v2',  # 预训练模型
-    'albert_config_path': '../albert_lstm_crf/data/input/model/albert_base_v2/config.json',  # 基础版的预训练模型
-    'albert_vocab_path': '../albert_lstm_crf/data/input/model/albert_base_v2//vocab.txt'  # bert需要词表
+    'bert_dir': '../albert_lstm_crf/data/input/model',  # 预训练模型
+    'albert_config_path': '../albert_lstm_crf/data/input/model/albert_config_large.json',  # 基础版的预训练模型
+    'albert_vocab_path': '../albert_lstm_crf/data/input/model/vocab.txt'  # bert需要词表
+
     # 'bert_dir': '../albert_lstm_crf/data/input/model/albert_base_zh',  # 预训练模型
     # 'albert_config_path': '../albert_lstm_crf/data/input/model/albert_base_zh/config.json',  # 基础版的预训练模型
     # 'albert_vocab_path': '../albert_lstm_crf/data/input/model/albert_base_zh//vocab.txt'  # bert需要词表

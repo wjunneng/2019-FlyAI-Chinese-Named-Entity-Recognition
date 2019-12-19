@@ -108,6 +108,9 @@ class BertConfig(PretrainedConfig):
             self.type_vocab_size = type_vocab_size
             self.initializer_range = initializer_range
             self.layer_norm_eps = layer_norm_eps
+            # 添加
+            self.output_hidden_states = True
+            self.output_attentions = True
         else:
             raise ValueError("First argument must be either a vocabulary size (int)"
                              " or the path to a pretrained model config file (str)")

@@ -5,17 +5,24 @@ import math
 import torch.optim as optim
 
 from net import Net
-from utils import f1_score, get_tags, format_result
+from utils import f1_score, get_tags, format_result, convert_tf_checkpoint_to_pytorch
 from albert_lstm_crf import args as arguments
 from model_util import save_model
 from data_loader import create_batch_iter
+
 # 必须使用该方法下载模型，然后加载
 from flyai.utils import remote_helper
 
 from flyai.dataset import Dataset
 
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-# remote_helper.get_remote_date('https://www.flyai.com/m/albert_base_v2.zip')
+
+remote_helper.get_remote_date('https://www.flyai.com/m/albert_large_zh.zip')
+convert_tf_checkpoint_to_pytorch(
+    tf_checkpoint_path="/home/wjunneng/Ubuntu/2019-FlyAI-Chinese-Named-Entity-Recognition/albert_lstm_crf/data/input/model",
+    bert_config_file="/home/wjunneng/Ubuntu/2019-FlyAI-Chinese-Named-Entity-Recognition/albert_lstm_crf/data/input/model/albert_config_large.json",
+    pytorch_dump_path="/home/wjunneng/Ubuntu/2019-FlyAI-Chinese-Named-Entity-Recognition/albert_lstm_crf/data/input/model/pytorch_model.bin",
+    share_type="all")
 
 
 class NER(object):
@@ -23,7 +30,7 @@ class NER(object):
     def __init__(self, exec_type="train"):
         parser = argparse.ArgumentParser()
         parser.add_argument("-e", "--EPOCHS", default=10, type=int, help="train epochs")
-        parser.add_argument("-b", "--BATCH", default=8, type=int, help="batch size")
+        parser.add_argument("-b", "--BATCH", default=64, type=int, help="batch size")
         args = parser.parse_args()
 
         self.batch_size = args.BATCH

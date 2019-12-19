@@ -40,6 +40,19 @@ class Net(nn.Module):
         self.tag_map = tag_map
 
         bert_config = BertConfig.from_pretrained(str(config['albert_config_path']), share_type='all')
+
+        # # 增加的配置
+        # bert_config.directionality = "bidi"
+        # bert_config.pooler_fc_size = 768
+        # bert_config.pooler_num_attention_heads = 12,
+        # bert_config.pooler_num_fc_layers = 3,
+        # bert_config.pooler_size_per_head = 128,
+        # bert_config.pooler_type = "first_token_transform"
+        # # bert_config.vocab_size = 21128,
+        # bert_config.ln_type = "postln"
+        # bert_config.output_hidden_states = True
+        # bert_config.output_attentions = True
+
         self.word_embeddings = BertModel.from_pretrained(config['bert_dir'], config=bert_config)
         self.word_embeddings.to(DEVICE)
         self.word_embeddings.eval()
