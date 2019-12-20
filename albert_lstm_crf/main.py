@@ -118,6 +118,19 @@ class NER(object):
                     print("step {}".format(step))
                     print("epoch [{}] |{}| {}/{}\n\tloss {:.2f}".format(epoch, progress, step, total_size, loss.item()))
 
+        for epoch in range(self.epochs):
+            for step in range(self.dataset.get_step() // self.epochs):
+                self.model.train()
+                self.model.zero_grad()
+                x_val, y_val = self.dataset.next_validation_batch()
+                batch = tuple(
+                    t.to(DEVICE) for t in create_batch_iter(mode='dev', X=x_val, y=y_val).dataset.tensors)
+                b_input_ids, b_input_mask, b_labels, b_out_masks = batch
+                bert_encode = self.model(b_input_ids, b_input_mask)
+                loss = self.model.loss_fn(bert_encode=bert_encode, tags=b_labels, output_mask=b_out_masks)
+                loss.backward()
+                optimizer.step()
+
         save_model(self.model, arguments.output_dir)
 
     def eval_1(self, x_val, y_val):

@@ -10,7 +10,7 @@ log_path = "./log"  # 日志文件
 embedding_size = 1024
 hidden_size = 128
 dropout = 0.05
-learning_rate = 1e-2
+learning_rate = 1e-3
 task_name = "albert_lstm_crf_ner"
 unknown_token = "[UNK]"
 
