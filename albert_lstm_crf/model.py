@@ -54,14 +54,15 @@ class Model(Base):
             input_ids, input_mask, label_ids, output_mask = batch
             bert_encode = self.net(input_ids, input_mask)
             predict = self.processor.output_y(self.net.predict(bert_encode, output_mask).numpy())
-            print('x_data')
-            print(x_data)
-            print(predict)
             start = 0
             for index in range(len(x_data)):
-                print(x_data[index])
-                end = start + len(x_data[index])
-                print(predict[start:end])
+                # '12' 应为1个符符
+                if x_data[index].replace('.', '').isdigit() is False:
+                    length = len(x_data[index])
+                else:
+                    length = 1
+
+                end = start + length
                 predicts.append(Counter(predict[start:end]).most_common()[0][0])
                 start = end
         return predicts
@@ -71,8 +72,6 @@ class Model(Base):
             self.net = torch.load(self.bert_model)
         labels = []
         for data in datas:
-            print('source:')
-            print(data['source'])
             predicts = self.predict(source=data['source'])
 
             labels.append(predicts)

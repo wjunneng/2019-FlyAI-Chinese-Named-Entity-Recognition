@@ -12,6 +12,8 @@ from data_loader import create_batch_iter
 
 # 必须使用该方法下载模型，然后加载
 from flyai.utils import remote_helper
+# 导入flyai打印日志函数的库
+from flyai.utils.log_helper import train_log
 
 from flyai.dataset import Dataset
 

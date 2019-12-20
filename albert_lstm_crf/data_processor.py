@@ -186,15 +186,15 @@ def convert_examples_to_features(examples, max_seq_length, tokenizer):
         # output_mask:     0 1  1  1  1  1   0     0   0 0 0
         # --------------看结果是否合理------------------------
 
-        if ex_index < 1:
-            logger.info("-----------------Example-----------------")
-            logger.info("guid: %s" % (example.guid))
-            logger.info("text_a: %s" % example.text_a)
-            logger.info("tokens: %s" % " ".join([str(x) for x in tokens]))
-            logger.info("input_ids: %s" % " ".join([str(x) for x in input_ids]))
-            logger.info("input_mask: %s" % " ".join([str(x) for x in input_mask]))
-            logger.info("label: %s " % " ".join([str(x) for x in label_id]))
-            logger.info("output_mask: %s " % " ".join([str(x) for x in output_mask]))
+        #if ex_index < 1:
+        #    logger.info("-----------------Example-----------------")
+        #    logger.info("guid: %s" % (example.guid))
+        #    logger.info("text_a: %s" % example.text_a)
+        #    logger.info("tokens: %s" % " ".join([str(x) for x in tokens]))
+        #    logger.info("input_ids: %s" % " ".join([str(x) for x in input_ids]))
+        #    logger.info("input_mask: %s" % " ".join([str(x) for x in input_mask]))
+        #    logger.info("label: %s " % " ".join([str(x) for x in label_id]))
+        #    logger.info("output_mask: %s " % " ".join([str(x) for x in output_mask]))
         # ----------------------------------------------------
 
         feature = InputFeature(input_ids=input_ids, input_mask=input_mask, label_id=label_id, output_mask=output_mask)
