@@ -131,7 +131,7 @@ class NER(object):
                 optimizer.step()
                 # schedule.step(loss)
                 if step % 50 == 0:
-                    self.eval_1(x_val, y_val)
+                    self.eval(x_val, y_val)
                     print("-" * 50)
                     progress = ("█" * int(step * 25 / total_size)).ljust(25)
                     print("step {}".format(step))
@@ -151,7 +151,7 @@ class NER(object):
 
         save_model(self.model, arguments.output_dir)
 
-    def eval_1(self, x_val, y_val):
+    def eval(self, x_val, y_val):
         """
         评估所有的单个tag，如下
         Returns:
@@ -175,22 +175,6 @@ class NER(object):
             self.model.acc_f1(predicts, label_ids)
             self.model.class_report(predicts, label_ids)
             print('eval_loss: ', eval_loss)
-
-    def eval_2(self, x_val, y_val):
-        """
-        只评估:['ROLE', 'LAW', 'LOC', 'CRIME', 'TIME', 'ORG', 'PER']
-        :return:
-        """
-        self.model.eval()
-        with torch.no_grad():
-            batch = create_batch_iter(mode='dev', X=x_val, y=y_val).dataset.tensors
-            batch = tuple(t.to(DEVICE) for t in batch)
-            input_ids, input_mask, label_ids, output_mask = batch
-            bert_encode = self.model(input_ids, input_mask)
-            predicts = self.model.predict(bert_encode, output_mask)
-            print("\teval")
-            for tag in self.tags:
-                f1_score(label_ids, predicts, tag, self.model.tag_map)
 
     """
     注意：
