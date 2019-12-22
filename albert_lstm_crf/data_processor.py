@@ -72,12 +72,14 @@ class MyPro(DataProcessor):
         examples = []
         for i, line in enumerate(lines):
             guid = "%s-%d" % (set_type, i)
+
             # 数据首增加一个字符
-            # text_a = [args.unknown_token] + line["source"].tolist()
+            # text_a = args.unknown_token + ' ' + ' '.join(line["source"].tolist())
             # label = 'O ' + ' '.join(line["target"].tolist())
             # 不增加一个字符
             text_a = ' '.join(line["source"].tolist())
             label = ' '.join(line["target"].tolist())
+
             example = InputExample(guid=guid, text_a=text_a, label=label)
             examples.append(example)
         return examples
@@ -107,10 +109,12 @@ class MyPro(DataProcessor):
         examples = []
         for i, line in enumerate(X):
             guid = "predict-%d" % i
+
             # 增加一个字符
-            # text_a = [args.unknown_token] + line.tolist()
+            # text_a = args.unknown_token + ' ' + ' '.join(line.tolist())
             # 不增加一个字符
             text_a = ' '.join(line.tolist())
+
             label = None
             example = InputExample(guid=guid, text_a=text_a, label=label)
             examples.append(example)
@@ -186,7 +190,7 @@ def convert_examples_to_features(examples, max_seq_length, tokenizer):
         # output_mask:     0 1  1  1  1  1   0     0   0 0 0
         # --------------看结果是否合理------------------------
 
-        #if ex_index < 1:
+        # if ex_index < 1:
         #    logger.info("-----------------Example-----------------")
         #    logger.info("guid: %s" % (example.guid))
         #    logger.info("text_a: %s" % example.text_a)

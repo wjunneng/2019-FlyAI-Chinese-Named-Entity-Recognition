@@ -20,5 +20,5 @@ p = model.predict_all(
      {"source": "强令 违章 冒险 作业 罪"}
      ])
 
-print(len([len(i) for i in p]))
+print([len(i) for i in p])
 print(p)

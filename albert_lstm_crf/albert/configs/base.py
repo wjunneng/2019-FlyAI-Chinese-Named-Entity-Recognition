@@ -12,7 +12,12 @@ config = {
     'result_dir': BASE_DIR + "/outputs/result",
 
     'bert_dir': './data/input/model',  # 预训练模型
+    # albert_base
+    # 'albert_config_path': './data/input/model/albert_config_base.json',  # 基础版的预训练模型
+    # albert_large
     'albert_config_path': './data/input/model/albert_config_large.json',  # 基础版的预训练模型
+    # albert_xlarge
+    # 'albert_config_path': './data/input/model/albert_config_xlarge.json',  # 基础版的预训练模型
     'albert_vocab_path': './data/input/model/vocab.txt'  # bert需要词表
 
     # 'bert_dir': '../albert_lstm_crf/data/input/model/albert_base_zh',  # 预训练模型

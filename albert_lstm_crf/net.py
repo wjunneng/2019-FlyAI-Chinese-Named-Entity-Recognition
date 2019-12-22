@@ -41,30 +41,20 @@ class Net(nn.Module):
 
         bert_config = BertConfig.from_pretrained(str(config['albert_config_path']), share_type='all')
 
-        # # 增加的配置
-        # bert_config.directionality = "bidi"
-        # bert_config.pooler_fc_size = 768
-        # bert_config.pooler_num_attention_heads = 12,
-        # bert_config.pooler_num_fc_layers = 3,
-        # bert_config.pooler_size_per_head = 128,
-        # bert_config.pooler_type = "first_token_transform"
-        # # bert_config.vocab_size = 21128,
-        # bert_config.ln_type = "postln"
-        # bert_config.output_hidden_states = True
-        # bert_config.output_attentions = True
-
         self.word_embeddings = BertModel.from_pretrained(config['bert_dir'], config=bert_config)
         self.word_embeddings.to(DEVICE)
         self.word_embeddings.eval()
 
+        self.rnn_layers = 1
+
         self.lstm = nn.LSTM(self.embedding_dim, self.hidden_dim // 2,
-                            num_layers=1, bidirectional=True, batch_first=True, dropout=self.dropout)
+                            num_layers=self.rnn_layers, bidirectional=True, batch_first=True, dropout=self.dropout)
         self.hidden2tag = nn.Linear(self.hidden_dim, self.tag_size)
         self.crf = CRF(self.tag_size)
 
     def init_hidden(self):
-        return (torch.randn(2, self.batch_size, self.hidden_dim // 2, device=DEVICE),
-                torch.randn(2, self.batch_size, self.hidden_dim // 2, device=DEVICE))
+        return (torch.randn(2 * self.rnn_layers, self.batch_size, self.hidden_dim // 2, device=DEVICE),
+                torch.randn(2 * self.rnn_layers, self.batch_size, self.hidden_dim // 2, device=DEVICE))
 
     def forward(self, input_ids, attention_mask):
         self.batch_size = input_ids.size(0)
@@ -78,7 +68,8 @@ class Net(nn.Module):
         # 倒数第二层hidden_states的shape
         embeddings = all_hidden_states[-2]
         lstm_out, _ = self.lstm(embeddings, self.hidden)
-        output = self.hidden2tag(lstm_out)
+        b_lstm_out = nn.Dropout(p=args.dropout)(lstm_out)
+        output = self.hidden2tag(b_lstm_out)
 
         return output
 

@@ -5,6 +5,7 @@ import math
 import torch.optim as optim
 
 from net import Net
+from torch.optim.lr_scheduler import ReduceLROnPlateau
 from utils import f1_score, get_tags, format_result, convert_tf_checkpoint_to_pytorch
 import args as arguments
 from model_util import save_model
@@ -19,6 +20,15 @@ from flyai.dataset import Dataset
 
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
+# ## albert-base
+# remote_helper.get_remote_date('https://www.flyai.com/m/albert_base_zh_tensorflow.zip')
+# convert_tf_checkpoint_to_pytorch(
+#     tf_checkpoint_path="./data/input/model",
+#     bert_config_file="./data/input/model/albert_config_base.json",
+#     pytorch_dump_path="./data/input/model/pytorch_model.bin",
+#     share_type="all")
+
+# ## albert-large
 remote_helper.get_remote_date('https://www.flyai.com/m/albert_large_zh.zip')
 convert_tf_checkpoint_to_pytorch(
     tf_checkpoint_path="./data/input/model",
@@ -27,12 +37,20 @@ convert_tf_checkpoint_to_pytorch(
     share_type="all")
 
 
+# ## albert-xlarge
+# remote_helper.get_remote_date('https://www.flyai.com/m/albert_xlarge_zh_183k.zip')
+# convert_tf_checkpoint_to_pytorch(tf_checkpoint_path="./data/input/model",
+#                                  bert_config_file="./data/input/model/albert_config_xlarge.json",
+#                                  pytorch_dump_path="./data/input/model/pytorch_model.bin",
+#                                  share_type="all")
+
+
 class NER(object):
 
     def __init__(self, exec_type="train"):
         parser = argparse.ArgumentParser()
         parser.add_argument("-e", "--EPOCHS", default=10, type=int, help="train epochs")
-        parser.add_argument("-b", "--BATCH", default=64, type=int, help="batch size")
+        parser.add_argument("-b", "--BATCH", default=24, type=int, help="batch size")
         args = parser.parse_args()
 
         self.batch_size = args.BATCH
@@ -92,7 +110,7 @@ class NER(object):
         min_lr(float or list):学习率下限，可为 float，或者 list，当有多个参数组时，可用 list 进行设置。
         eps(float):学习率衰减的最小值，当学习率变化小于 eps 时，则不调整学习率。
         """
-        # schedule = ReduceLROnPlateau(optimizer=optimizer, mode='min',factor=0.1,patience=100,verbose=False)
+        # schedule = ReduceLROnPlateau(optimizer=optimizer, mode='min', factor=0.1, patience=100, eps=1e-4, verbose=True)
         total_size = math.ceil(self.dataset.get_train_length() / self.batch_size)
         for epoch in range(self.epochs):
             for step in range(self.dataset.get_step() // self.epochs):
@@ -107,8 +125,9 @@ class NER(object):
                 bert_encode = self.model(b_input_ids, b_input_mask)
                 loss = self.model.loss_fn(bert_encode=bert_encode, tags=b_labels, output_mask=b_out_masks)
                 loss.backward()
+
                 # 梯度裁剪
-                # torch.nn.utils.clip_grad_norm_(self.model.parameters(),1) 
+                # torch.nn.utils.clip_grad_norm_(self.model.parameters(), 1)
                 optimizer.step()
                 # schedule.step(loss)
                 if step % 50 == 0:
@@ -118,18 +137,17 @@ class NER(object):
                     print("step {}".format(step))
                     print("epoch [{}] |{}| {}/{}\n\tloss {:.2f}".format(epoch, progress, step, total_size, loss.item()))
 
-        for epoch in range(self.epochs):
-            for step in range(self.dataset.get_step() // self.epochs):
-                self.model.train()
-                self.model.zero_grad()
-                x_val, y_val = self.dataset.next_validation_batch()
-                batch = tuple(
-                    t.to(DEVICE) for t in create_batch_iter(mode='dev', X=x_val, y=y_val).dataset.tensors)
-                b_input_ids, b_input_mask, b_labels, b_out_masks = batch
-                bert_encode = self.model(b_input_ids, b_input_mask)
-                loss = self.model.loss_fn(bert_encode=bert_encode, tags=b_labels, output_mask=b_out_masks)
-                loss.backward()
-                optimizer.step()
+        for step in range(self.dataset.get_step() // self.epochs):
+            self.model.train()
+            self.model.zero_grad()
+            x_val, y_val = self.dataset.next_validation_batch()
+            batch = tuple(
+                t.to(DEVICE) for t in create_batch_iter(mode='train', X=x_val, y=y_val).dataset.tensors)
+            b_input_ids, b_input_mask, b_labels, b_out_masks = batch
+            bert_encode = self.model(b_input_ids, b_input_mask)
+            loss = self.model.loss_fn(bert_encode=bert_encode, tags=b_labels, output_mask=b_out_masks)
+            loss.backward()
+            optimizer.step()
 
         save_model(self.model, arguments.output_dir)
 

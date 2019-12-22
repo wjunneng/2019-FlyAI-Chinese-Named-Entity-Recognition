@@ -6,10 +6,15 @@ output_dir = "./checkpoint"  # checkpoint和预测输出文件夹
 bert_model = "./data/input/model"  # BERT 预训练模型种类 bert-base-chinese
 log_path = "./log"  # 日志文件
 
-
+# albert_base
+# embedding_size = 768
+# albert_large
 embedding_size = 1024
+# albert_xlarge
+# embedding_size = 2048
+
 hidden_size = 128
-dropout = 0.05
+dropout = 0.1
 learning_rate = 1e-3
 task_name = "albert_lstm_crf_ner"
 unknown_token = "[UNK]"

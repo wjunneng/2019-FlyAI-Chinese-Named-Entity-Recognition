@@ -17,10 +17,6 @@ def init_params():
         raise ValueError("Task not found: %s" % task_name)
     processor = processors[task_name]()
 
-    # with open(args.WORDS_FILE, 'r') as file:
-    #     tokenizer = args.token_words
-    #     tokenizer.extend(list(json.load(file).keys()))
-
     # your path for model and vocab
     VOCAB = config['albert_vocab_path']
     tokenizer = BertTokenizer.from_pretrained(VOCAB)
@@ -64,21 +60,16 @@ def create_batch_iter(mode, X, y):
     # 数据集
     data = TensorDataset(all_input_ids, all_input_mask, all_label_ids, all_output_mask)
 
-    # if mode == "train":
-    #     sampler = RandomSampler(data)
-    # elif mode == "dev":
-    #     sampler = SequentialSampler(data)
-    # elif mode == 'predict':
-    #     sampler = SequentialSampler(data)
-    # else:
-    #     raise ValueError("Invalid mode %s" % mode)
-    #
-    # # 迭代器
-    # iterator = DataLoader(data, sampler=sampler, batch_size=batch_size)
-
-    if mode == 'train':
-        iterator = DataLoader(data, shuffle=True, batch_size=batch_size)
+    if mode == "train":
+        sampler = RandomSampler(data)
+    elif mode == "dev":
+        sampler = SequentialSampler(data)
+    elif mode == 'predict':
+        sampler = SequentialSampler(data)
     else:
-        iterator = DataLoader(data, shuffle=True, batch_size=batch_size)
+        raise ValueError("Invalid mode %s" % mode)
+
+    # 迭代器
+    iterator = DataLoader(data, sampler=sampler, batch_size=batch_size)
 
     return iterator

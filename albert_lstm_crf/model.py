@@ -48,12 +48,14 @@ class Model(Base):
         x_datas = self.data.predict_data(**data)
         x_datas = Model._split_x_data(x_datas, args.max_seq_length)
         predicts = []
+        print('x_datas:', x_datas)
         for x_data in x_datas:
             batch = create_batch_iter(mode='predict', X=np.array([x_data]), y=None).dataset.tensors
             batch = tuple(t.to(self.device) for t in batch)
             input_ids, input_mask, label_ids, output_mask = batch
             bert_encode = self.net(input_ids, input_mask)
             predict = self.processor.output_y(self.net.predict(bert_encode, output_mask).numpy())
+
             start = 0
             for index in range(len(x_data)):
                 # '12' 应为1个符符
@@ -65,6 +67,8 @@ class Model(Base):
                 end = start + length
                 predicts.append(Counter(predict[start:end]).most_common()[0][0])
                 start = end
+
+        print('predicts:', predicts)
         return predicts
 
     def predict_all(self, datas):
