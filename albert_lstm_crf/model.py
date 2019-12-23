@@ -73,10 +73,14 @@ class Model(Base):
         print('apredict:', apredict)
         print('bpredict:', predicts)
         # 规则一：剔除首个字符为I开头的情况
-        predicts = self.rule_1(predicts)
+        predicts = self.rule_1(predicts=predicts)
 
-        # 规则二：不能出现多个'B-PER'同时出现的情况
-        predicts = self.rule_2(predicts)
+        # 规则二：不能出现“O I-”的情况
+        predicts = self.rule_2(predicts=predicts,
+                               a_labels=['I-ROLE', 'I-LAW', 'I-LOC', 'I-CRIME', 'I-TIME', 'I-ORG', 'I-PER'])
+
+        # 规则三：不能出现多个'B-PER'同时出现的情况
+        predicts = self.rule_3(predicts=predicts, b_labels=['B-LAW', 'B-CRIME', 'B-TIME', 'B-ORG', 'B-PER'])
 
         print('epredict:', predicts)
         print('\n')
@@ -89,26 +93,79 @@ class Model(Base):
 
         return predicts
 
-    def rule_2(self, predicts):
+    def rule_2(self, predicts, a_labels):
         predicts = ' '.join(predicts)
-        # b_labels = ['B-LAW', 'B-CRIME', 'B-TIME', 'B-ORG', 'B-PER']
-        b_labels = ['B-ORG']
+        for a_label in a_labels:
+            b_label = "B" + a_label[1:]
+            predicts.replace("O " + a_label, "O " + b_label)
+
+        return predicts.split(' ')
+
+    def rule_3(self, predicts, b_labels):
+        predicts = ' '.join(predicts)
         for b_label in b_labels:
+            a_label = "I" + b_label[1:]
             in_end = predicts.split(b_label + ' ' + b_label)
             in_start = in_end[0].strip()
             in_end = in_end[1:]
 
-            index = 0
+            # index: / 1:前面有改动 / -1:前面没有改动
+            index = -1
+            istart = False
+
+            # 前面是以b_label结束的
+            if in_start.endswith(b_label):
+                index = 1
+
             for step in in_end:
                 step = step.strip()
-                if step.startswith(b_label) and index != 0:
-                    in_start = in_start + ' ' + b_label + ' I' + b_label[1:] + ' I' + step[1:]
-                else:
-                    index += 1
-                    if in_start != '':
-                        in_start = in_start + ' ' + b_label + ' I' + b_label[1:] + ' ' + step
+                # 开始的时候是为空
+                if in_start == '':
+                    in_start = b_label + ' ' + b_label
+                    index = 1
+                    istart = True
+
+                # 当前step是为空时
+                if step == '':
+                    if index == 1:
+                        # 前面经过改动过
+                        in_start = in_start + ' ' + a_label + ' ' + a_label
                     else:
-                        in_start = b_label + ' I' + b_label[1:] + ' ' + step
+                        # 前面没经过改动过
+                        in_start = in_start + ' ' + b_label + ' ' + a_label
+                        index = 1
+                else:
+                    # 当前是以step开头时
+                    if step.startswith(b_label):
+                        if index == 1:
+                            # 前面经过改动过
+                            if istart:
+                                in_start = in_start + ' I' + step[1:]
+                            else:
+                                in_start = in_start + ' ' + a_label + ' ' + a_label + ' I' + step[1:]
+                        else:
+                            # 前面没经过改动过
+                            if istart:
+                                in_start = in_start + ' ' + step
+                            else:
+                                in_start = in_start + ' ' + b_label + ' ' + a_label + ' ' + step
+                            index = -1
+                    else:
+                        if istart:
+                            in_start = in_start + ' ' + step
+                        else:
+                            in_start = in_start + ' ' + b_label + ' ' + a_label + ' ' + step
+                        index = -1
+
+                    # 前面是以b_label结束的
+                    if in_start.endswith(b_label):
+                        index = 1
+                    else:
+                        index = -1
+                istart = False
+
+            # 去除矛盾的选项
+            in_start = in_start.replace(a_label + " " + b_label, a_label + " " + a_label)
             predicts = in_start
 
         return predicts.split(' ')
