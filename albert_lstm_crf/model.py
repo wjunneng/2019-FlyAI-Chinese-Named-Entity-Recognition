@@ -80,7 +80,9 @@ class Model(Base):
                                a_labels=['I-ROLE', 'I-LAW', 'I-LOC', 'I-CRIME', 'I-TIME', 'I-ORG', 'I-PER'])
 
         # 规则三：不能出现多个'B-PER'同时出现的情况
-        predicts = self.rule_3(predicts=predicts, b_labels=['B-LAW', 'B-CRIME', 'B-TIME', 'B-ORG', 'B-PER'])
+        predicts = self.rule_3(predicts=predicts,
+                               b_labels=['B-LAW', 'B-CRIME', 'B-TIME', 'B-ORG', 'B-PER'],
+                               x_0_0_length=len(x_datas[0][0]))
 
         print('epredict:', predicts)
         print('\n')
@@ -97,11 +99,11 @@ class Model(Base):
         predicts = ' '.join(predicts)
         for a_label in a_labels:
             b_label = "B" + a_label[1:]
-            predicts.replace("O " + a_label, "O " + b_label)
+            predicts = predicts.replace("O " + a_label, "O " + b_label)
 
         return predicts.split(' ')
 
-    def rule_3(self, predicts, b_labels):
+    def rule_3(self, predicts, b_labels, x_0_0_length):
         predicts = ' '.join(predicts)
         for b_label in b_labels:
             a_label = "I" + b_label[1:]
@@ -121,7 +123,11 @@ class Model(Base):
                 step = step.strip()
                 # 开始的时候是为空
                 if in_start == '':
-                    in_start = b_label + ' ' + b_label
+                    if x_0_0_length == 1:
+                        in_start = 'O ' + b_label
+                    else:
+                        in_start = b_label + ' ' + a_label
+
                     index = 1
                     istart = True
 

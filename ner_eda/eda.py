@@ -13,9 +13,19 @@ def generate(predict_dir, true_dir, predict_true_dir):
             file_3.write(predict[6 * index + 4])
 
 
-def rule_2(predicts):
+def rule_2(predicts, a_labels):
+    predicts = ' '.join(predicts)
+    for a_label in a_labels:
+        b_label = "B" + a_label[1:]
+        predicts = predicts.replace("O " + a_label, "O " + b_label)
+
+    return predicts.split(' ')
+
+
+def rule_3(predicts):
     predicts = ' '.join(predicts)
     # b_labels = ['B-LAW', 'B-CRIME', 'B-TIME', 'B-ORG', 'B-PER']
+    #          'B-ROLE', 'B-LAW', 'B-LOC', 'B-CRIME', 'B-TIME', 'B-ORG', 'B-PER'
     b_labels = ['B-ORG']
     for b_label in b_labels:
         a_label = "I" + b_label[1:]
@@ -92,7 +102,13 @@ if __name__ == '__main__':
 
     generate(predict_dir, true_dir, predict_true_dir)
 
-    # predicts = rule_2(
+    # predicts = rule_3(
     #     ['B-ORG', 'B-ORG', 'B-ORG', 'O', 'O', 'O', 'O', 'O', 'O', 'O', 'B-ORG', 'B-ORG', 'O', 'O', 'B-PER', 'B-PER', 'O', 'O', 'O',
     #      'B-PER', 'O', 'O', 'O'])
+    # print(predicts)
+
+    # predicts = rule_2(
+    #     ['I-LAW', 'I-LAW', 'I-LAW', 'I-LAW', 'I-LAW', 'I-LAW', 'I-LAW', 'O', 'I-LAW', 'I-LAW', 'O', 'I-LAW', 'I-LAW',
+    #      'B-LAW', 'I-LAW', 'I-LAW'],
+    #     a_labels=['I-ROLE', 'I-LAW', 'I-LOC', 'I-CRIME', 'I-TIME', 'I-ORG', 'I-PER'])
     # print(predicts)
