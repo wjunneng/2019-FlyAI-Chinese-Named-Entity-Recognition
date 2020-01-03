@@ -13,102 +13,51 @@ def generate(predict_dir, true_dir, predict_true_dir):
             file_3.write(predict[6 * index + 4])
 
 
-def rule_2(predicts, a_labels):
-    predicts = ' '.join(predicts)
-    for a_label in a_labels:
-        b_label = "B" + a_label[1:]
-        predicts = predicts.replace("O " + a_label, "O " + b_label)
+def delete_similar(predict_true, predict_true_dislike):
+    with open(predict_true, 'r') as file_1, open(predict_true_dislike, 'w') as file_2:
+        predict = file_1.readlines()
+        for index in range(len(predict) // 6):
+            line_1 = predict[6 * index]
+            line_2 = predict[6 * index + 1]
+            line_3 = predict[6 * index + 2]
+            line_4 = predict[6 * index + 3]
+            line_5 = predict[6 * index + 4]
+            line_6 = predict[6 * index + 5]
 
-    return predicts.split(' ')
+            if line_4.split(': ')[-1] != line_5.split(': ')[-1]:
+                file_2.write(line_1)
+                file_2.write(line_2)
+                file_2.write(line_3)
+                file_2.write(line_4)
+                file_2.write(line_5)
+                file_2.write(line_6)
 
 
-def rule_3(predicts):
-    predicts = ' '.join(predicts)
-    # b_labels = ['B-LAW', 'B-CRIME', 'B-TIME', 'B-ORG', 'B-PER']
-    #          'B-ROLE', 'B-LAW', 'B-LOC', 'B-CRIME', 'B-TIME', 'B-ORG', 'B-PER'
-    b_labels = ['B-ORG']
-    for b_label in b_labels:
-        a_label = "I" + b_label[1:]
-        in_end = predicts.split(b_label + ' ' + b_label)
-        in_start = in_end[0].strip()
-        in_end = in_end[1:]
+def rule_4(predicts):
+    for index in range(1, len(predicts)):
+        before = predicts[index - 1]
+        after = predicts[index]
+        if after.startswith('I-') and (before not in [after, 'B' + after[1:]]):
+            predicts[index] = 'B' + after[1:]
 
-        # index: / 1:前面有改动 / -1:前面没有改动
-        index = -1
-        istart = False
+    return predicts
 
-        # 前面是以b_label结束的
-        if in_start.endswith(b_label):
-            index = 1
 
-        for step in in_end:
-            step = step.strip()
-            # 开始的时候是为空
-            if in_start == '':
-                in_start = b_label + ' ' + b_label
-                index = 1
-                istart = True
+def rule_5(predicts, x_0_0_length):
+    if x_0_0_length == 1 and predicts[0] == 'B-LOC' and predicts[1] == 'B-LOC':
+        predicts[0] = 'O'
 
-            # 当前step是为空时
-            if step == '':
-                if index == 1:
-                    # 前面经过改动过
-                    in_start = in_start + ' ' + a_label + ' ' + a_label
-                else:
-                    # 前面没经过改动过
-                    in_start = in_start + ' ' + b_label + ' ' + a_label
-                    index = 1
-            else:
-                # 当前是以step开头时
-                if step.startswith(b_label):
-                    if index == 1:
-                        # 前面经过改动过
-                        if istart:
-                            in_start = in_start + ' I' + step[1:]
-                        else:
-                            in_start = in_start + ' ' + a_label + ' ' + a_label + ' I' + step[1:]
-                    else:
-                        # 前面没经过改动过
-                        if istart:
-                            in_start = in_start + ' ' + step
-                        else:
-                            in_start = in_start + ' ' + b_label + ' ' + a_label + ' ' + step
-                        index = -1
-                else:
-                    if istart:
-                        in_start = in_start + ' ' + step
-                    else:
-                        in_start = in_start + ' ' + b_label + ' ' + a_label + ' ' + step
-                    index = -1
-
-                # 前面是以b_label结束的
-                if in_start.endswith(b_label):
-                    index = 1
-                else:
-                    index = -1
-            istart = False
-
-        # 去除矛盾的选项
-        in_start = in_start.replace(a_label + " " + b_label, a_label + " " + a_label)
-        predicts = in_start
-
-    return predicts.split(' ')
+    return predicts
 
 
 if __name__ == '__main__':
     predict_dir = '../ner_eda/predict.txt'
     true_dir = '../ner_eda/true.txt'
     predict_true_dir = '../ner_eda/predict_true.txt'
+    predict_true_dir_dislike = '../ner_eda/predict_true_dislike.txt'
 
-    generate(predict_dir, true_dir, predict_true_dir)
+    # generate(predict_dir, true_dir, predict_true_dir)
 
-    # predicts = rule_3(
-    #     ['B-ORG', 'B-ORG', 'B-ORG', 'O', 'O', 'O', 'O', 'O', 'O', 'O', 'B-ORG', 'B-ORG', 'O', 'O', 'B-PER', 'B-PER', 'O', 'O', 'O',
-    #      'B-PER', 'O', 'O', 'O'])
-    # print(predicts)
+    # delete_similar(predict_true_dir, predict_true_dir_dislike)
 
-    # predicts = rule_2(
-    #     ['I-LAW', 'I-LAW', 'I-LAW', 'I-LAW', 'I-LAW', 'I-LAW', 'I-LAW', 'O', 'I-LAW', 'I-LAW', 'O', 'I-LAW', 'I-LAW',
-    #      'B-LAW', 'I-LAW', 'I-LAW'],
-    #     a_labels=['I-ROLE', 'I-LAW', 'I-LOC', 'I-CRIME', 'I-TIME', 'I-ORG', 'I-PER'])
-    # print(predicts)
+    print(rule_5(['B-LOC', 'B-LOC', 'I-LOC', 'O', 'B-LOC', 'B-LOC', 'I-LOC', 'I-LAW', 'I-LAW', 'I-LAW'], 1))

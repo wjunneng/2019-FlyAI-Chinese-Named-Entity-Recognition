@@ -84,6 +84,12 @@ class Model(Base):
                                b_labels=['B-LAW', 'B-CRIME', 'B-TIME', 'B-ORG', 'B-PER'],
                                x_0_0_length=len(x_datas[0][0]))
 
+        # 规则四: 不能以‘I-’单独出现的情况
+        predicts = self.rule_4(predicts=predicts)
+
+        # 规则五：
+        # predicts = self.rule_5(predicts=predicts, x_0_0_length=len(x_datas[0][0]))
+
         print('epredict:', predicts)
         print('\n')
         return predicts
@@ -175,6 +181,22 @@ class Model(Base):
             predicts = in_start
 
         return predicts.split(' ')
+
+    def rule_4(self, predicts):
+        for index in range(1, len(predicts)):
+            before = predicts[index - 1]
+            after = predicts[index]
+            if after.startswith('I-') and (before not in [after, 'B' + after[1:]]):
+                predicts[index] = 'B' + after[1:]
+        return predicts
+
+    def rule_5(self, predicts, x_0_0_length):
+        predicts_0 = predicts[0]
+        predicts_1 = predicts[1]
+        if x_0_0_length == 1 and predicts_0 == 'B-LOC' and predicts_1 == 'B-LOC':
+            predicts[0] = 'O'
+
+        return predicts
 
     def predict_all(self, datas):
         if self.net is None:
