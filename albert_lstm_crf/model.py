@@ -85,7 +85,7 @@ class Model(Base):
                                x_0_0_length=len(x_datas[0][0]))
 
         # 规则四: 不能以‘I-’单独出现的情况
-        predicts = self.rule_4(predicts=predicts)
+        # predicts = self.rule_4(predicts=predicts)
 
         # 规则五：
         # predicts = self.rule_5(predicts=predicts, x_0_0_length=len(x_datas[0][0]))
