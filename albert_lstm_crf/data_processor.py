@@ -2,8 +2,6 @@ from Logginger import init_logger
 import args as args
 import numpy as np
 
-logger = init_logger("bert_ner", logging_path=args.log_path)
-
 
 class InputExample(object):
     def __init__(self, guid, text_a, text_b=None, label=None):
@@ -125,6 +123,8 @@ class MyPro(DataProcessor):
 
 
 def convert_examples_to_features(examples, max_seq_length, tokenizer):
+    logger = init_logger("bert_ner", logging_path=args.log_path)
+
     # 标签转换为数字
     label_map = {label: i for i, label in enumerate(args.labels)}
 

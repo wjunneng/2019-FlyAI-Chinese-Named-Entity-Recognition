@@ -1,13 +1,10 @@
 import torch
 from torch.utils.data import TensorDataset, DataLoader, RandomSampler, SequentialSampler
-import json
+
 from data_processor import MyPro, convert_examples_to_features
 import args as args
-from Logginger import init_logger
 from albert.configs.base import config
 from albert.model.tokenization_bert import BertTokenizer
-
-logger = init_logger("bert_ner", logging_path=args.log_path)
 
 
 def init_params():
@@ -24,7 +21,7 @@ def init_params():
     return processor, tokenizer
 
 
-def create_batch_iter(mode, X, y):
+def create_batch_iter(mode, X, y, batch_size=1):
     """
     构造迭代器
     """
@@ -37,7 +34,6 @@ def create_batch_iter(mode, X, y):
         examples = processor.get_examples(X=X)
     else:
         raise ValueError("Invalid mode %s" % mode)
-    batch_size = len(X)
 
     # 方法一： 调整维度
     if args.use_calculate_max_seq_length:

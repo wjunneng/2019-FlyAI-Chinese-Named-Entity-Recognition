@@ -1,151 +1,173 @@
 # -*- coding:utf-8 -*-
+import sys
+import os
+
+os.chdir(sys.path[0])
 import argparse
 import torch
 import math
-import torch.optim as optim
+import random
+import numpy as np
+from tqdm import tqdm
+from pytorch_transformers.optimization import AdamW, WarmupLinearSchedule
 
+import shutil
 from net import Net
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from utils import f1_score, get_tags, format_result, convert_tf_checkpoint_to_pytorch
-import args as arguments
+import args
 from model_util import save_model
 from data_loader import create_batch_iter
 
 from flyai.utils import remote_helper
 from flyai.dataset import Dataset
+from Logginger import init_logger
 
+logger = init_logger("bert_ner", logging_path=args.log_path)
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-# ## albert-base
-# remote_helper.get_remote_date('https://www.flyai.com/m/albert_base_zh_tensorflow.zip')
-# convert_tf_checkpoint_to_pytorch(
-#     tf_checkpoint_path="./data/input/model",
-#     bert_config_file="./data/input/model/albert_config_base.json",
-#     pytorch_dump_path="./data/input/model/pytorch_model.bin",
-#     share_type="all")
 
-# ## albert-large
-remote_helper.get_remote_date('https://www.flyai.com/m/albert_large_zh.zip')
-convert_tf_checkpoint_to_pytorch(
-    tf_checkpoint_path="./data/input/model",
-    bert_config_file="./data/input/model/albert_config_large.json",
-    pytorch_dump_path="./data/input/model/pytorch_model.bin",
-    share_type="all")
-
-
-# ## albert-xlarge
-# remote_helper.get_remote_date('https://www.flyai.com/m/albert_xlarge_zh_183k.zip')
-# convert_tf_checkpoint_to_pytorch(tf_checkpoint_path="./data/input/model",
-#                                  bert_config_file="./data/input/model/albert_config_xlarge.json",
-#                                  pytorch_dump_path="./data/input/model/pytorch_model.bin",
-#                                  share_type="all")
-
-
-class NER(object):
+class Instructor(object):
     """
-    特点：使用flyai字典的get all data  | 使用提供的next_train_batch | next_validation_batch
+    特点：使用flyai字典的get all data  | 自己进行划分next batch
     """
 
-    def __init__(self, exec_type="train"):
-        parser = argparse.ArgumentParser()
-        parser.add_argument("-e", "--EPOCHS", default=10, type=int, help="train epochs")
-        parser.add_argument("-b", "--BATCH", default=24, type=int, help="batch size")
-        args = parser.parse_args()
+    def __init__(self, args):
+        self.args = args
+        self.tag_map = {label: i for i, label in enumerate(self.args.labels)}
 
-        self.batch_size = args.BATCH
-        self.epochs = args.EPOCHS
+    def train(self, train_source, train_target, dev_source, dev_target):
+        if os.path.exists(self.args.output_dir) is True:
+            shutil.rmtree(self.args.output_dir)
 
-        self.learning_rate = arguments.learning_rate
-        self.embedding_size = arguments.embedding_size
-        self.hidden_size = arguments.hidden_size
-        self.tags = arguments.tags
-        self.dropout = arguments.dropout
-        self.tag_map = {label: i for i, label in enumerate(arguments.labels)}
+        train_dataloader = create_batch_iter(mode='train', X=train_source, y=train_target, batch_size=self.args.BATCH)
+        dev_dataloader = create_batch_iter(mode='dev', X=dev_source, y=dev_target, batch_size=self.args.BATCH)
 
-        if exec_type == "train":
-            self.model = Net(
-                tag_map=self.tag_map,
-                batch_size=self.batch_size,
-                dropout=self.dropout,
-                embedding_dim=self.embedding_size,
-                hidden_dim=self.hidden_size,
-            )
-        else:
-            self.model = None
-
-        self.dataset = Dataset(epochs=self.epochs, batch=self.batch_size)
-
-    def train(self):
         self.model.to(DEVICE)
-        # weight decay是放在正则项（regularization）前面的一个系数，正则项一般指示模型的复杂度，
-        # 所以weight decay的作用是调节模型复杂度对损失函数的影响，若weight decay很大，则复杂的模型损失函数的值也就大。
-        optimizer = optim.Adam(self.model.parameters(), lr=self.learning_rate, weight_decay=0.0005)
-        """
-        当网络的评价指标不在提升的时候，可以通过降低网络的学习率来提高网络性能:
-        optimer指的是网络的优化器
-        mode (str) ，可选择‘min’或者‘max’，min表示当监控量停止下降的时候，学习率将减小，max表示当监控量停止上升的时候，学习率将减小。默认值为‘min’
-        factor 学习率每次降低多少，new_lr = old_lr * factor
-        patience=10，容忍网路的性能不提升的次数，高于这个次数就降低学习率
-        verbose（bool） - 如果为True，则为每次更新向stdout输出一条消息。 默认值：False
-        threshold（float） - 测量新最佳值的阈值，仅关注重大变化。 默认值：1e-4
-        cooldown(int)： 冷却时间“，当调整学习率之后，让学习率调整策略冷静一下，让模型再训练一段时间，再重启监测模式。
-        min_lr(float or list):学习率下限，可为 float，或者 list，当有多个参数组时，可用 list 进行设置。
-        eps(float):学习率衰减的最小值，当学习率变化小于 eps 时，则不调整学习率。
-        注意：
-            1.在模型中有BN层或者dropout层时，在训练阶段和测试阶段必须显式指定train()
-                和eval()。
-            2.一般来说，在验证或者是测试阶段，因为只是需要跑个前向传播(forward)就足够了，
-                因此不需要保存变量的梯度。保存梯度是需要额外显存或者内存进行保存的，占用了空间，
-                有时候还会在验证阶段导致OOM(Out Of Memory)错误，因此我们在验证和测试阶段，最好显式地取消掉模型变量的梯度。
-                使用torch.no_grad()这个上下文管理器就可以了。
-        """
-        # schedule = ReduceLROnPlateau(optimizer=optimizer, mode='min', factor=0.1, patience=100, eps=1e-4, verbose=True)
-        total_size = math.ceil(self.dataset.get_train_length() / self.batch_size)
-        for epoch in range(self.epochs):
-            for step in range(self.dataset.get_step() // self.epochs):
+
+        # 优化器准备
+        param_optimizer = list(self.model.named_parameters())
+        no_decay = list(['bias', 'LayerNorm.bias', 'LayerNorm.weight'])
+        optimizer_grouped_parameters = list([{'params': [p for n, p in param_optimizer if not any(
+            nd in n for nd in no_decay)], 'weight_decay': 0.01}, {'params': [p for n, p in param_optimizer if any(
+            nd in n for nd in no_decay)], 'weight_decay': 0.0}])
+
+        optimizer = AdamW(params=optimizer_grouped_parameters, lr=self.args.learning_rate, correct_bias=False)
+
+        total_size = math.ceil(len(train_source) / self.args.BATCH)
+
+        best_acc = 0
+        for epoch in range(self.args.EPOCHS):
+            for train_step, train_batch in enumerate(tqdm(train_dataloader, desc='Train_Iteration')):
                 self.model.train()
-                # 与optimizer.zero_grad()作用一样
                 self.model.zero_grad()
-                x_train, y_train = self.dataset.next_train_batch()
-                x_val, y_val = self.dataset.next_validation_batch()
-                batch = tuple(
-                    t.to(DEVICE) for t in create_batch_iter(mode='train', X=x_train, y=y_train).dataset.tensors)
-                b_input_ids, b_input_mask, b_labels, b_out_masks = batch
-                bert_encode = self.model(b_input_ids, b_input_mask)
-                loss = self.model.loss_fn(bert_encode=bert_encode, tags=b_labels, output_mask=b_out_masks)
+
+                train_batch = tuple(t.to(DEVICE) for t in train_batch)
+                t_input_ids, t_input_mask, t_labels, t_out_masks = train_batch
+
+                t_bert_encode = self.model(t_input_ids, t_input_mask)
+                loss = self.model.loss_fn(bert_encode=t_bert_encode, tags=t_labels, output_mask=t_out_masks)
                 loss.backward()
 
                 # 梯度裁剪
                 # torch.nn.utils.clip_grad_norm_(self.model.parameters(), 1)
                 optimizer.step()
-                # schedule.step(loss)
-                if step % 50 == 0:
+
+                if train_step % 10 == 0:
                     self.model.eval()
-                    eval_loss, eval_acc, eval_f1 = 0, 0, 0
-                    with torch.no_grad():
-                        batch = tuple(
-                            t.to(DEVICE) for t in create_batch_iter(mode='dev', X=x_val, y=y_val).dataset.tensors)
-                        batch = tuple(t.to(DEVICE) for t in batch)
-                        input_ids, input_mask, label_ids, output_mask = batch
-                        bert_encode = self.model(input_ids, input_mask)
-                        eval_los = self.model.loss_fn(bert_encode=bert_encode, tags=label_ids, output_mask=output_mask)
-                        eval_loss = eval_los + eval_loss
-                        predicts = self.model.predict(bert_encode, output_mask)
+                    eval_loss = 0
 
-                        label_ids = label_ids.view(1, -1)
-                        label_ids = label_ids[label_ids != -1]
+                    for dev_step, dev_batch in enumerate(dev_dataloader):
+                        dev_batch = tuple(t.to(DEVICE) for t in dev_batch)
+                        d_input_ids, d_input_mask, d_label_ids, d_output_mask = dev_batch
 
-                        self.model.acc_f1(predicts, label_ids)
-                        self.model.class_report(predicts, label_ids)
-                        print('eval_loss: ', eval_loss)
-                    print("-" * 50)
-                    progress = ("█" * int(step * 25 / total_size)).ljust(25)
-                    print("step {}".format(step))
-                    print("epoch [{}] |{}| {}/{}\n\tloss {:.2f}".format(epoch, progress, step, total_size, loss.item()))
+                        with torch.no_grad():
+                            d_bert_encode = self.model(d_input_ids, d_input_mask)
+                        eval_loss += self.model.loss_fn(bert_encode=d_bert_encode, tags=d_label_ids,
+                                                        output_mask=d_output_mask)
+                        predicts = self.model.predict(d_bert_encode, d_output_mask)
 
-        save_model(self.model, arguments.output_dir)
+                        d_label_ids = d_label_ids.view(1, -1)
+                        d_label_ids = d_label_ids[d_label_ids != -1]
+
+                        eval_acc, eval_f1 = self.model.acc_f1(predicts, d_label_ids)
+
+                        if eval_acc > best_acc:
+                            best_acc = eval_acc
+                            save_model(self.model, self.args.output_dir)
+
+                        self.model.class_report(predicts, d_label_ids)
+
+                    logger.info("\n>step {}".format(train_step))
+                    logger.info("\n>epoch [{}] {}/{}\n\tloss {:.2f}".format(epoch, train_step, total_size, loss.item()))
+        if self.args.output_dir is False:
+            save_model(self.model, self.args.output_dir)
+
+    def generate(self):
+        self.dataset = Dataset(epochs=self.args.EPOCHS, batch=self.args.BATCH, val_batch=self.args.BATCH)
+        source, target, _, _ = self.dataset.get_all_data()
+        source = np.asarray([i['source'].split(' ') for i in source])
+        target = np.asarray([i['target'].split(' ') for i in target])
+
+        index = [i for i in range(len(source))]
+        np.random.shuffle(np.asarray(index))
+        train_source, dev_source = source[index[0:int(len(index) * 0.9)]], source[index[int(len(index) * 0.9):]]
+        train_target, dev_target = target[index[0:int(len(index) * 0.9)]], target[index[int(len(index) * 0.9):]]
+
+        return train_source, train_target, dev_source, dev_target
+
+    def run(self):
+        # ## albert-base
+        # remote_helper.get_remote_date('https://www.flyai.com/m/albert_base_zh_tensorflow.zip')
+        # convert_tf_checkpoint_to_pytorch(
+        #     tf_checkpoint_path="./data/input/model",
+        #     bert_config_file="./data/input/model/albert_config_base.json",
+        #     pytorch_dump_path="./data/input/model/pytorch_model.bin",
+        #     share_type="all")
+
+        # ## albert-large
+        remote_helper.get_remote_date('https://www.flyai.com/m/albert_large_zh.zip')
+        convert_tf_checkpoint_to_pytorch(
+            tf_checkpoint_path="./data/input/model",
+            bert_config_file="./data/input/model/albert_config_large.json",
+            pytorch_dump_path="./data/input/model/pytorch_model.bin",
+            share_type="all")
+
+        # ## albert-xlarge
+        # remote_helper.get_remote_date('https://www.flyai.com/m/albert_xlarge_zh_183k.zip')
+        # convert_tf_checkpoint_to_pytorch(tf_checkpoint_path="./data/input/model",
+        #                                  bert_config_file="./data/input/model/albert_config_xlarge.json",
+        #                                  pytorch_dump_path="./data/input/model/pytorch_model.bin",
+        #                                  share_type="all")
+
+        self.model = Net(
+            tag_map=self.tag_map,
+            batch_size=self.args.BATCH,
+            dropout=self.args.dropout,
+            embedding_dim=self.args.embedding_size,
+            hidden_dim=self.args.hidden_size,
+        )
+
+        train_source, train_target, dev_source, dev_target = self.generate()
+
+        self.train(train_source, train_target, dev_source, dev_target)
 
 
 if __name__ == "__main__":
-    ner = NER("train")
-    ner.train()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-e", "--EPOCHS", default=20, type=int, help="train epochs")
+    parser.add_argument("-b", "--BATCH", default=4, type=int, help="batch size")
+    config = parser.parse_args()
+
+    args.EPOCHS = config.EPOCHS
+    args.BATCH = config.BATCH
+
+    if args.seed is not None:
+        random.seed(args.seed)
+        np.random.seed(args.seed)
+        torch.manual_seed(args.seed)
+        torch.backends.cudnn.deterministic = True
+        torch.backends.cudnn.benchmark = False
+
+    instructor = Instructor(args=args)
+    instructor.run()
