@@ -1,4 +1,2 @@
 flyai
-Pillow
 tqdm
-boto3

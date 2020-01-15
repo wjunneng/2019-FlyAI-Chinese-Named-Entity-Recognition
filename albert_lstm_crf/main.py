@@ -9,15 +9,14 @@ import math
 import random
 import numpy as np
 from tqdm import tqdm
-from pytorch_transformers.optimization import AdamW, WarmupLinearSchedule
 
 import shutil
 from net import Net
-from torch.optim.lr_scheduler import ReduceLROnPlateau
 from utils import f1_score, get_tags, format_result, convert_tf_checkpoint_to_pytorch
 import args
 from model_util import save_model
 from data_loader import create_batch_iter
+from torch.optim.adamw import AdamW
 
 from flyai.utils import remote_helper
 from flyai.dataset import Dataset
@@ -52,7 +51,7 @@ class Instructor(object):
             nd in n for nd in no_decay)], 'weight_decay': 0.01}, {'params': [p for n, p in param_optimizer if any(
             nd in n for nd in no_decay)], 'weight_decay': 0.0}])
 
-        optimizer = AdamW(params=optimizer_grouped_parameters, lr=self.args.learning_rate, correct_bias=False)
+        optimizer = AdamW(params=optimizer_grouped_parameters, lr=self.args.learning_rate)
 
         total_size = math.ceil(len(train_source) / self.args.BATCH)
 
@@ -155,7 +154,7 @@ class Instructor(object):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("-e", "--EPOCHS", default=20, type=int, help="train epochs")
+    parser.add_argument("-e", "--EPOCHS", default=5, type=int, help="train epochs")
     parser.add_argument("-b", "--BATCH", default=4, type=int, help="batch size")
     config = parser.parse_args()
 

@@ -18,6 +18,9 @@ embedding_size = 1024
 # albert_xlarge
 # embedding_size = 2048
 
+# 是否利用 伪标签 来提升模型的泛化能力
+use_pseudo_labeling = True
+
 hidden_size = 128
 dropout = 0.1
 learning_rate = 1e-3
